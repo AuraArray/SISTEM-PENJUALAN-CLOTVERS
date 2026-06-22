@@ -1,213 +1,226 @@
 /**
- * CLOTHVERSH SYSTEM LIGHT CORE - SYSTEMS MOTOR ENGINE LOGIC
+ * CLOTVERS SYSTEM v1.0 - CORE ENGINE
+ * Built exclusively using IndexedDB, Vanilla JS, and Chart.js
  */
 
-let db;
-const dbName = "ClothvershDB";
+let db = null;
+let currentModule = 'dashboard-stok';
+let currentKeuanganTab = 'tab-omset';
+let posCart = [];
+
+// Global charts instances references
 let trendChartInstance = null;
-let pieChartInstance = null;
+let platformChartInstance = null;
 
-// Initialize Database Object Stores Architecture
-const dbRequest = indexedDB.open(dbName, 3);
+const SIZES = ['S', 'M', 'L', 'XL', '2XL'];
 
-dbRequest.onupgradeneeded = function(e) {
-    db = e.target.result;
-    const structures = {
-        "store_produk": "id",
-        "store_hpp": "id_hpp",
-        "store_transaksi": "id_transaksi",
-        "store_jurnal_akuntansi": "id_jurnal",
-        "store_retur_reject": "id_retur"
-    };
-    for (const [storeName, key] of Object.entries(structures)) {
-        if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName, { keyPath: key, autoIncrement: true });
-        }
-    }
-};
-
-dbRequest.onsuccess = function(e) {
-    db = e.target.result;
-    initSystemCoreHooks();
-};
-
-function getPeriodeFilterGlobal() {
-    return {
-        bulan: document.getElementById("filter-bulan").value,
-        tahun: document.getElementById("filter-tahun").value
-    };
-}
-
-function initSystemCoreHooks() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById("pos-tgl-order").value = today;
-    document.getElementById("pos-tgl-po").value = today;
-
-    // Filter Change Event Binding
-    document.getElementById("filter-bulan").addEventListener("change", refreshAllDashboardsData);
-    document.getElementById("filter-tahun").addEventListener("change", refreshAllDashboardsData);
-    document.getElementById("finance-filter-tipe").addEventListener("change", renderFinanceDashboard);
-
-    // Live Math Engines Event Allocation
-    document.querySelectorAll(".input-calc-hpp").forEach(input => {
-        input.addEventListener("input", calculateLiveHPPFormEngine);
-    });
-
-    document.getElementById("pos-qty").addEventListener("input", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-diskon").addEventListener("input", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-ongkir").addEventListener("input", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-dp").addEventListener("input", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-status-bayar").addEventListener("change", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-produk-varian").addEventListener("change", calculateLivePOSPriceMatrix);
-    document.getElementById("pos-platform").addEventListener("change", calculateLivePOSPriceMatrix);
-
-    refreshAllDashboardsData();
-}
-
-function refreshAllDashboardsData() {
-    renderStokDashboard();
-    renderHPPDashboard();
-    renderPOSDashboard();
-    renderAnalyticsDashboard();
-    renderReturDashboard();
-    renderFinanceDashboard();
-}
-
-// --- NAVIGATION SYSTEMS ---
-function switchTab(target) {
-    ['stok', 'hpp', 'pos', 'analytics', 'retur', 'finance'].forEach(t => {
-        document.getElementById(`panel-${t}`).classList.add('hidden');
-        if(document.getElementById(`btn-nav-${t}`)) document.getElementById(`btn-nav-${t}`).classList.remove('active-nav');
-        if(document.getElementById(`btn-m-nav-${t}`)) {
-            document.getElementById(`btn-m-nav-${t}`).className = "flex flex-col items-center text-[10px] font-bold text-gray-400";
-        }
-    });
-    document.getElementById(`panel-${target}`).classList.remove('hidden');
-    if(document.getElementById(`btn-nav-${target}`)) document.getElementById(`btn-nav-${target}`).classList.add('active-nav');
-    if(document.getElementById(`btn-m-nav-${target}`)) {
-        document.getElementById(`btn-m-nav-${target}`).className = "flex flex-col items-center text-[10px] font-bold text-[#396399]";
-    }
-    const titles = { stok: 'Input Stok Pakaian', hpp: 'Manajemen HPP & Harga Jual', pos: 'Terminal POS Kasir', analytics: 'Rekap & Grafik Analisis', retur: 'Modul Retur & Cacat', finance: 'Akuntansi & Keuangan' };
-    document.getElementById("current-tab-title").innerText = titles[target];
-    
-    if(target === 'analytics') { setTimeout(initChartsRenderEngine, 100); }
-}
-
-// --- DASHBOARD A: MULTIVARIAN COMPLEX STOK LOGIC ---
-function tambahBarisWarnaKompleks() {
-    const container = document.getElementById("matrix-warna-container");
-    const div = document.createElement("div");
-    div.className = "p-2.5 bg-[#f5f5f7] rounded-xl space-y-2 warna-block mt-2";
-    div.innerHTML = `
-        <input type="text" placeholder="Nama Warna (Misal: Putih)" class="w-full bg-white border border-gray-200 rounded-lg p-1.5 text-xs font-bold input-warna-nama" required>
-        <div class="grid grid-cols-4 gap-1 text-[10px] font-semibold text-gray-500 text-center border-b border-gray-200 pb-1">
-            <div>Size</div><div>Stok</div><div>HPP</div><div>Jual</div>
-        </div>
-        <div class="space-y-1 size-matrix-rows">
-            ${['S', 'M', 'L', 'XL'].map(sz => `
-                <div class="grid grid-cols-4 gap-1 items-center" data-size="${sz}">
-                    <span class="font-bold text-center">${sz}</span>
-                    <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-stok">
-                    <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-hpp">
-                    <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-jual">
-                </div>
-            `).join('')}
-        </div>
-    `;
-    container.appendChild(div);
-}
-
-document.getElementById("form-stok").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const id = document.getElementById("stok-id").value;
-    const matriks_varian = [];
-
-    document.querySelectorAll(".warna-block").forEach(block => {
-        const warna = block.querySelector(".input-warna-nama").value.trim();
-        if(warna) {
-            block.querySelectorAll(".size-matrix-rows > div").forEach(row => {
-                const size = row.getAttribute("data-size");
-                const stok = parseInt(row.querySelector(".size-stok").value) || 0;
-                const hpp_varian = parseFloat(row.querySelector(".size-hpp").value) || 0;
-                const jual_varian = parseFloat(row.querySelector(".size-jual").value) || 0;
-                matriks_varian.push({ warna, size, stok, hpp_varian, jual_varian });
-            });
-        }
-    });
-
-    const payload = {
-        nama_model: document.getElementById("stok-nama").value,
-        jenis_kain: document.getElementById("stok-kain").value,
-        tipe_kain_gsm: document.getElementById("stok-gsm").value,
-        detail_produksi: document.getElementById("stok-detail").value,
-        wh: parseInt(document.getElementById("stok-wh").value) || 0,
-        ht: parseInt(document.getElementById("stok-ht").value) || 0,
-        tb: parseInt(document.getElementById("stok-tb").value) || 0,
-        bb: parseInt(document.getElementById("stok-bb").value) || 0,
-        matriks_varian
-    };
-
-    const tx = db.transaction(["store_produk"], "readwrite");
-    if(id) { payload.id = parseInt(id); tx.objectStore("store_produk").put(payload); }
-    else { tx.objectStore("store_produk").add(payload); }
-
-    tx.oncomplete = function() {
-        document.getElementById("form-stok").reset();
-        document.getElementById("stok-id").value = "";
-        document.getElementById("matrix-warna-container").innerHTML = `
-            <div class="p-2.5 bg-[#f5f5f7] rounded-xl space-y-2 warna-block">
-                <input type="text" placeholder="Nama Warna (Misal: Hitam)" class="w-full bg-white border border-gray-200 rounded-lg p-1.5 text-xs font-bold input-warna-nama" required>
-                <div class="grid grid-cols-4 gap-1 text-[10px] font-semibold text-gray-500 text-center border-b border-gray-200 pb-1">
-                    <div>Size</div><div>Stok</div><div>HPP</div><div>Jual</div>
-                </div>
-                <div class="space-y-1 size-matrix-rows">
-                    ${['S', 'M', 'L', 'XL'].map(sz => `
-                        <div class="grid grid-cols-4 gap-1 items-center" data-size="${sz}">
-                            <span class="font-bold text-center">${sz}</span>
-                            <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-stok">
-                            <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-hpp">
-                            <input type="number" value="0" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-jual">
-                        </div>
-                    `).join('')}
-                </div>
-            </div>`;
-        refreshAllDashboardsData();
-    };
+// Initialize App Lifecycle
+document.addEventListener("DOMContentLoaded", () => {
+    initPeriodFilters();
+    initIndexedDB();
+    renderSizeMatrixInputs();
 });
 
-function renderStokDashboard() {
-    const tbody = document.getElementById("table-stok");
-    tbody.innerHTML = "";
-    db.transaction(["store_produk"], "readonly").objectStore("store_produk").openCursor().onsuccess = function(e) {
+// Render Dynamic Period Filter Dropdown (2026 - 2030)
+function initPeriodFilters() {
+    const filterSelect = document.getElementById('global-filter-periode');
+    filterSelect.innerHTML = '';
+    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const currentYear = 2026;
+    
+    for (let y = 2026; y <= 2030; y++) {
+        months.forEach((m, idx) => {
+            const opt = document.createElement('option');
+            const mVal = String(idx + 1).padStart(2, '0');
+            opt.value = `${y}-${mVal}`;
+            opt.innerText = `${m} ${y}`;
+            if (y === 2026 && idx === 5) opt.selected = true; // Default Juni 2026 sesuai waktu berjalan
+            filterSelect.appendChild(opt);
+        });
+    }
+}
+
+// Render dynamic input fields for size matrix
+function renderSizeMatrixInputs() {
+    const container = document.getElementById('size-matrix-inputs');
+    container.innerHTML = '';
+    SIZES.forEach(size => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-gray-100 hover:bg-gray-50";
+        tr.innerHTML = `
+            <td class="p-2 border border-gray-200 font-bold text-[#396399] text-center">${size}</td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-stok-${size}" value="10" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-hpp-${size}" value="45000" required class="w-full bg-white border border-gray-200 p-1 text-right rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-jual-${size}" value="85000" required class="w-full bg-white border border-gray-200 p-1 text-right rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-wh-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-ht-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="number" id="sm-tb-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
+            <td class="p-1 border border-gray-200"><input type="text" id="sm-bbrec-${size}" placeholder="e.g. 50-60" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
+        `;
+        container.appendChild(tr);
+    });
+}
+
+// Initialize Open IndexedDB Local Engine
+function initIndexedDB() {
+    const request = indexedDB.open("ClotversDB", 1);
+    
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains('store_produk')) db.createObjectStore('store_produk', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('store_hpp')) db.createObjectStore('store_hpp', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('store_transaksi')) db.createObjectStore('store_transaksi', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('store_jurnal_akuntansi')) db.createObjectStore('store_jurnal_akuntansi', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('store_retur_reject')) db.createObjectStore('store_retur_reject', { keyPath: 'id', autoIncrement: true });
+    };
+
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        refreshAllTablesAndDropdowns();
+    };
+    
+    request.onerror = () => alert("CRITICAL ERROR: Gagal memuat IndexedDB lokal komputer anda.");
+}
+
+// Global Dynamic Pipeline Filter Switch
+function triggerGlobalFilter() {
+    refreshAllTablesAndDropdowns();
+}
+
+function refreshAllTablesAndDropdowns() {
+    renderTabelProduk();
+    renderTabelHPP();
+    populateDropdownsPOSnRetur();
+    renderTabelPOS();
+    renderAnalisisChartsDanTabel();
+    renderTabelRetur();
+    renderTabelKeuanganAkuntansi();
+}
+
+// Module Single-Page routing system layout
+function switchModule(modId) {
+    currentModule = modId;
+    const modules = ['modul-stok', 'modul-hpp', 'modul-pos', 'modul-analisis', 'modul-retur', 'modul-keuangan', 'modul-sync'];
+    modules.forEach(m => document.getElementById(m).classList.add('hidden'));
+    
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(b => {
+        b.classList.remove('bg-[#396399]', 'text-white');
+        b.classList.add('text-[#1E293B]', 'hover:bg-gray-200');
+    });
+
+    let activeMod = '';
+    let titleStr = '';
+    let targetBtn = '';
+
+    switch(modId) {
+        case 'dashboard-stok': activeMod = 'modul-stok'; titleStr = 'Dashboard Input Stok Pakaian'; targetBtn = 'btn-stok'; break;
+        case 'dashboard-hpp': activeMod = 'modul-hpp'; titleStr = 'Manajemen HPP & Penjualan'; targetBtn = 'btn-hpp'; break;
+        case 'dashboard-pos': activeMod = 'modul-pos'; titleStr = 'Terminal POS Kasir Utama'; targetBtn = 'btn-pos'; break;
+        case 'dashboard-analisis': activeMod = 'modul-analisis'; titleStr = 'Rekapan & Grafik Tren Analisis'; targetBtn = 'btn-analisis'; break;
+        case 'dashboard-retur': activeMod = 'modul-retur'; titleStr = 'Modul Manajemen Retur & Reject'; targetBtn = 'btn-retur'; break;
+        case 'dashboard-keuangan': activeMod = 'modul-keuangan'; titleStr = 'Dashboard Akuntansi & Keuangan Terikat'; targetBtn = 'btn-keuangan'; break;
+        case 'dashboard-sync': activeMod = 'modul-sync'; titleStr = 'Inter-Device Data Sync Bridge'; targetBtn = 'btn-sync'; break;
+    }
+
+    document.getElementById(activeMod).classList.remove('hidden');
+    document.getElementById('current-module-title').innerText = titleStr;
+    document.getElementById(targetBtn).classList.add('bg-[#396399]', 'text-white');
+    
+    refreshAllTablesAndDropdowns();
+}
+
+// Get Selected Global Year Month Object Date Filter Helper
+function getFilterRange() {
+    return document.getElementById('global-filter-periode').value; // Returns YYYY-MM
+}
+
+function matchFilterDate(dateStr) {
+    if(!dateStr) return false;
+    return dateStr.startsWith(getFilterRange());
+}
+
+// ==========================================
+// A. LOGIKA UTAMA: MANAJEMEN MASTER PRODUK
+// ==========================================
+function saveProduk(e) {
+    e.preventDefault();
+    const idEdit = document.getElementById('produk-id-edit').value;
+    const namaModel = document.getElementById('prod-nama-model').value;
+    const jenisKain = document.getElementById('prod-jenis-kain').value;
+    const tipeGsm = document.getElementById('prod-tipe-gsm').value;
+    const detailProd = document.getElementById('prod-detail-produksi').value;
+    const warna = document.getElementById('prod-warna').value || "Default";
+
+    let matriksVarian = [];
+    SIZES.forEach(size => {
+        matriksVarian.push({
+            size: size,
+            stok: parseInt(document.getElementById(`sm-stok-${size}`).value) || 0,
+            hpp_varian: parseFloat(document.getElementById(`sm-hpp-${size}`).value) || 0,
+            jual_varian: parseFloat(document.getElementById(`sm-jual-${size}`).value) || 0,
+            wh: parseInt(document.getElementById(`sm-wh-${size}`).value) || 0,
+            ht: parseInt(document.getElementById(`sm-ht-${size}`).value) || 0,
+            tb: parseInt(document.getElementById(`sm-tb-${size}`).value) || 0,
+            bb_rec: document.getElementById(`sm-bbrec-${size}`).value || "-"
+        });
+    });
+
+    const dataProduk = {
+        nama_model: namaModel,
+        jenis_kain: jenisKain,
+        tipe_kain_gsm: tipeGsm,
+        detail_produksi: detailProd,
+        warna: warna,
+        matriks_varian: matriksVarian,
+        timestamp: new Date().toISOString()
+    };
+
+    const tx = db.transaction('store_produk', 'readwrite');
+    const store = tx.objectStore('store_produk');
+    
+    if (idEdit) {
+        dataProduk.id = parseInt(idEdit);
+        store.put(dataProduk);
+    } else {
+        store.add(dataProduk);
+    }
+
+    tx.oncomplete = () => {
+        document.getElementById('form-produk').reset();
+        document.getElementById('produk-id-edit').value = '';
+        renderSizeMatrixInputs();
+        refreshAllTablesAndDropdowns();
+        alert("Master data produk berhasil tersimpan ke sistem browser local.");
+    };
+}
+
+function renderTabelProduk() {
+    const tbody = document.getElementById('tabel-produk-body');
+    tbody.innerHTML = '';
+    
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            const tr = document.createElement("tr");
-            tr.className = "border-b border-gray-100 text-xs hover:bg-gray-50/50";
+            const rowData = cursor.value;
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-100 hover:bg-gray-50 text-xs";
             
-            let matrixHTML = "";
-            v.matriks_varian.forEach((mv, index) => {
-                matrixHTML += `
-                    <div class="bg-white border border-gray-200 p-1.5 rounded-xl text-[10px] space-y-0.5 flex flex-col w-28">
-                        <span class="font-bold text-[#396399]">${mv.warna} (${mv.size})</span>
-                        <div class="flex items-center gap-1">
-                            <span class="text-[9px] text-gray-400">Stok:</span>
-                            <input type="number" value="${mv.stok}" onchange="updateStockOpnameDirect(${v.id}, ${index}, this.value)" class="w-full bg-gray-50 border border-gray-200 font-mono text-center text-amber-700 font-bold rounded">
-                        </div>
-                        <span class="text-[9px] text-gray-500">H: ${mv.hpp_varian.toLocaleString()}</span>
-                        <span class="text-[9px] text-green-600 font-semibold">J: ${mv.jual_varian.toLocaleString()}</span>
-                    </div>`;
+            let matrixHtml = `<div class="grid grid-cols-1 gap-1 text-[11px]">`;
+            rowData.matriks_varian.forEach(v => {
+                matrixHtml += `<div><strong>Size ${v.size} [Stok:${v.stok} Pcs]</strong> | HPP: Rp ${v.hpp_varian.toLocaleString()} | Jual: Rp ${v.jual_varian.toLocaleString()} | Dimensi: ${v.wh}x${v.ht}x${v.tb}cm (BB:${v.bb_rec}kg)</div>`;
             });
+            matrixHtml += `</div>`;
 
             tr.innerHTML = `
-                <td class="py-3 pr-2 font-bold text-gray-900">
-                    ${v.nama_model}<br>
-                    <span class="text-[10px] font-mono text-gray-400 font-medium">${v.jenis_kain} (${v.tipe_kain_gsm}) [WH:${v.wh} HT:${v.ht}]</span>
-                </td>
-                <td class="py-3"><div class="flex flex-wrap gap-1 max-w-xl">${matrixHTML}</div></td>
-                <td class="py-3 text-right space-x-1 whitespace-nowrap">
-                    <button onclick="editStokMaster(${v.id})" class="px-2 py-1 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200">Edit</button>
-                    <button onclick="deleteStokMaster(${v.id})" class="px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded-lg">Hapus</button>
+                <td class="p-3 font-bold text-[#1E293B]">${rowData.nama_model}<br><span class="text-xs text-gray-500 font-normal">Warna: ${rowData.warna}</span></td>
+                <td class="p-3">${rowData.jenis_kain}<br><span class="text-xs text-gray-500 font-normal">${rowData.tipe_kain_gsm} GSM</span></td>
+                <td class="p-3">${matrixHtml}</td>
+                <td class="p-3 text-center space-x-1 whitespace-nowrap">
+                    <button onclick="editProduk(${rowData.id})" class="text-[#396399] font-bold hover:underline">Edit</button>
+                    <button onclick="hapusRecord('store_produk', ${rowData.id})" class="text-red-600 font-bold hover:underline ml-1">Hapus</button>
+                    <button onclick="stockOpnamePrompt(${rowData.id})" class="text-amber-700 font-bold hover:underline ml-1">Opname</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -216,138 +229,132 @@ function renderStokDashboard() {
     };
 }
 
-function updateStockOpnameDirect(id, index, value) {
-    const tx = db.transaction(["store_produk"], "readwrite");
-    const store = tx.objectStore("store_produk");
-    store.get(id).onsuccess = function(e) {
-        const item = e.target.result;
-        if(item) {
-            item.matriks_varian[index].stok = parseInt(value) || 0;
-            store.put(item);
-        }
-    };
-}
+function editProduk(id) {
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').get(id).onsuccess = (e) => {
+        const p = e.target.result;
+        document.getElementById('produk-id-edit').value = p.id;
+        document.getElementById('prod-nama-model').value = p.nama_model;
+        document.getElementById('prod-jenis-kain').value = p.jenis_kain;
+        document.getElementById('prod-tipe-gsm').value = p.tipe_kain_gsm;
+        document.getElementById('prod-detail-produksi').value = p.detail_produksi;
+        document.getElementById('prod-warna').value = p.warna;
 
-function deleteStokMaster(id) {
-    if(confirm("Hapus berkas model produk pakaian ini dari inventory master?")) {
-        db.transaction(["store_produk"], "readwrite").objectStore("store_produk").delete(id).onsuccess = () => refreshAllDashboardsData();
-    }
-}
-
-function editStokMaster(id) {
-    db.transaction(["store_produk"], "readonly").objectStore("store_produk").get(id).onsuccess = function(e) {
-        const v = e.target.result;
-        if(!v) return;
-        document.getElementById("stok-id").value = v.id;
-        document.getElementById("stok-nama").value = v.nama_model;
-        document.getElementById("stok-kain").value = v.jenis_kain;
-        document.getElementById("stok-gsm").value = v.tipe_kain_gsm;
-        document.getElementById("stok-detail").value = v.detail_produksi || "";
-        document.getElementById("stok-wh").value = v.wh;
-        document.getElementById("stok-ht").value = v.ht;
-        document.getElementById("stok-tb").value = v.tb;
-        document.getElementById("stok-bb").value = v.bb;
-
-        const container = document.getElementById("matrix-warna-container");
-        container.innerHTML = "";
-
-        let grouped = {};
-        v.matriks_varian.forEach(mv => {
-            if(!grouped[mv.warna]) grouped[mv.warna] = [];
-            grouped[mv.warna].push(mv);
+        p.matriks_varian.forEach(v => {
+            if(document.getElementById(`sm-stok-${v.size}`)) {
+                document.getElementById(`sm-stok-${v.size}`).value = v.stok;
+                document.getElementById(`sm-hpp-${v.size}`).value = v.hpp_varian;
+                document.getElementById(`sm-jual-${v.size}`).value = v.jual_varian;
+                document.getElementById(`sm-wh-${v.size}`).value = v.wh;
+                document.getElementById(`sm-ht-${v.size}`).value = v.ht;
+                document.getElementById(`sm-tb-${v.size}`).value = v.tb;
+                document.getElementById(`sm-bbrec-${v.size}`).value = v.bb_rec;
+            }
         });
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+}
 
-        for (const [warna, arrays] of Object.entries(grouped)) {
-            const div = document.createElement("div");
-            div.className = "p-2.5 bg-[#f5f5f7] rounded-xl space-y-2 warna-block";
-            div.innerHTML = `
-                <input type="text" value="${warna}" class="w-full bg-white border border-gray-200 rounded-lg p-1.5 text-xs font-bold input-warna-nama" required>
-                <div class="grid grid-cols-4 gap-1 text-[10px] font-semibold text-gray-500 text-center border-b border-gray-200 pb-1">
-                    <div>Size</div><div>Stok</div><div>HPP</div><div>Jual</div>
-                </div>
-                <div class="space-y-1 size-matrix-rows">
-                    ${arrays.map(mv => `
-                        <div class="grid grid-cols-4 gap-1 items-center" data-size="${mv.size}">
-                            <span class="font-bold text-center">${mv.size}</span>
-                            <input type="number" value="${mv.stok}" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-stok">
-                            <input type="number" value="${mv.hpp_varian}" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-hpp">
-                            <input type="number" value="${mv.jual_varian}" class="bg-white border border-gray-200 rounded p-0.5 text-center text-xs size-jual">
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            container.appendChild(div);
+function stockOpnamePrompt(id) {
+    const sizeSelect = prompt("Masukkan Ukuran Baju yang di-Opname (S/M/L/XL/2XL):");
+    if(!sizeSelect || !SIZES.includes(sizeSelect.toUpperCase())) return alert("Ukuran dibatalkan atau tidak valid.");
+    
+    const newStock = prompt(`Masukkan Jumlah Stok Aktual Fisik yang Baru untuk Size ${sizeSelect.toUpperCase()}:`);
+    if(newStock === null || isNaN(newStock)) return alert("Input stok tidak valid.");
+
+    const tx = db.transaction('store_produk', 'readwrite');
+    const store = tx.objectStore('store_produk');
+    store.get(id).onsuccess = (e) => {
+        let p = e.target.result;
+        let matched = false;
+        p.matriks_varian.forEach(v => {
+            if(v.size === sizeSelect.toUpperCase()) {
+                v.stok = parseInt(newStock);
+                matched = true;
+            }
+        });
+        if(matched) {
+            store.put(p);
+            tx.oncomplete = () => { refreshAllTablesAndDropdowns(); alert("Stock Opname Berhasil diperbarui."); };
         }
     };
 }
 
-// --- DASHBOARD B: MANAJEMEN HPP FORMULA ---
-function calculateLiveHPPFormEngine() {
-    const kain = parseFloat(document.getElementById("hpp-kain").value) || 0;
-    const jahit = parseFloat(document.getElementById("hpp-jahit").value) || 0;
-    const sablon = parseFloat(document.getElementById("hpp-sablon").value) || 0;
-    const pack = parseFloat(document.getElementById("hpp-pack").value) || 0;
-    const margin = parseFloat(document.getElementById("hpp-margin").value) || 0;
-
-    const totalHPP = kain + jahit + sablon + pack;
-    const hargaDasar = totalHPP + (totalHPP * (margin / 100));
-
-    document.getElementById("live-hpp-total").innerText = "Rp " + totalHPP.toLocaleString();
-    document.getElementById("live-harga-dasar").innerText = "Rp " + hargaDasar.toLocaleString();
-}
-
-document.getElementById("form-hpp").addEventListener("submit", function(e) {
+// ==========================================
+// B. LOGIKA MANAJEMEN ESTIMASI HPP LENGKAP
+// ==========================================
+function saveHPP(e) {
     e.preventDefault();
-    const id = document.getElementById("hpp-id").value;
-    const kain = parseFloat(document.getElementById("hpp-kain").value) || 0;
-    const jahit = parseFloat(document.getElementById("hpp-jahit").value) || 0;
-    const sablon = parseFloat(document.getElementById("hpp-sablon").value) || 0;
-    const pack = parseFloat(document.getElementById("hpp-pack").value) || 0;
-    const margin = parseFloat(document.getElementById("hpp-margin").value) || 0;
-    
-    const hpp_total = kain + jahit + sablon + pack;
-    const hargaDasar = hpp_total + (hpp_total * (margin / 100));
+    const modelId = document.getElementById('hpp-model-select').value;
+    const modelText = document.getElementById('hpp-model-select').options[document.getElementById('hpp-model-select').selectedIndex].text;
+    const bKain = parseFloat(document.getElementById('hpp-kain').value) || 0;
+    const bJahit = parseFloat(document.getElementById('hpp-jahit').value) || 0;
+    const bSablon = parseFloat(document.getElementById('hpp-sablon').value) || 0;
+    const bPack = parseFloat(document.getElementById('hpp-pack').value) || 0;
+    const marginPercent = parseFloat(document.getElementById('hpp-margin').value) || 0;
 
-    const channels = ['wa', 'shopee', 'tiktok', 'reseller'];
-    const pChannels = {};
-    channels.forEach(ch => {
-        let pct = parseFloat(document.getElementById(`adm-${ch}`).value) || 0;
-        pChannels[ch] = Math.round(hargaDasar / (1 - (pct / 100)));
-    });
+    const hppTotal = bKain + bJahit + bSablon + bPack;
+    const hargaJualBersih = hppTotal + (hppTotal * (marginPercent / 100));
 
-    const payload = {
-        nama_model: document.getElementById("hpp-nama").value, biaya_kain: kain, ongkos_jahit: jahit,
-        aplikasi_sablon: sablon, packaging: pack, margin_percent: margin, hpp_total, harga_jual_channels: pChannels
+    // Ambil input manual potongan admin (%)
+    const admWa = parseFloat(document.getElementById('adm-wa').value) || 0;
+    const admShopee = parseFloat(document.getElementById('adm-shopee').value) || 0;
+    const admTiktok = parseFloat(document.getElementById('adm-tiktok').value) || 0;
+    const admReseller = parseFloat(document.getElementById('adm-reseller').value) || 0;
+    const admGrosir = parseFloat(document.getElementById('adm-grosir').value) || 0;
+
+    const dataHpp = {
+        produk_id: parseInt(modelId),
+        nama_model: modelText,
+        biaya_kain: bKain,
+        ongkos_jahit: bJahit,
+        aplikasi_sablon: bSablon,
+        packaging: bPack,
+        margin_percent: marginPercent,
+        hpp_total: hppTotal,
+        harga_jual_channels: {
+            WhatsApp: hargaJualBersih + (hargaJualBersih * (admWa / 100)),
+            Shopee: hargaJualBersih + (hargaJualBersih * (admShopee / 100)),
+            TikTok: hargaJualBersih + (hargaJualBersih * (admTiktok / 100)),
+            Reseller: hargaJualBersih - (hargaJualBersih * (admReseller / 100)), // skema diskon khusus reseller
+            Grosir: hargaJualBersih - (hargaJualBersih * (admGrosir / 100))
+        },
+        timestamp: new Date().toISOString()
     };
 
-    const tx = db.transaction(["store_hpp"], "readwrite");
-    if(id) { payload.id_hpp = parseInt(id); tx.objectStore("store_hpp").put(payload); }
-    else { tx.objectStore("store_hpp").add(payload); }
+    const tx = db.transaction('store_hpp', 'readwrite');
+    tx.objectStore('store_hpp').add(dataHpp);
+    tx.oncomplete = () => {
+        document.getElementById('form-hpp').reset();
+        refreshAllTablesAndDropdowns();
+        alert("Kalkulasi simulasi HPP tersimpan.");
+    };
+}
 
-    tx.oncomplete = () => { document.getElementById("form-hpp").reset(); document.getElementById("hpp-id").value=""; refreshAllDashboardsData(); };
-});
-
-function renderHPPDashboard() {
-    const tbody = document.getElementById("table-hpp");
-    tbody.innerHTML = "";
-    db.transaction(["store_hpp"], "readonly").objectStore("store_hpp").openCursor().onsuccess = function(e) {
+function renderTabelHPP() {
+    const tbody = document.getElementById('tabel-hpp-body');
+    tbody.innerHTML = '';
+    const tx = db.transaction('store_hpp', 'readonly');
+    tx.objectStore('store_hpp').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            const tr = document.createElement("tr");
+            const h = cursor.value;
+            const tr = document.createElement('tr');
             tr.className = "border-b border-gray-100 text-xs";
             tr.innerHTML = `
-                <td class="py-3 font-bold text-gray-900">${v.nama_model}</td>
-                <td class="py-3 font-mono text-gray-500">Rp ${v.hpp_total.toLocaleString()}</td>
-                <td class="py-3 font-mono space-y-0.5">
-                    <span class="block text-[#396399]">WA Retail: Rp ${v.harga_jual_channels.wa.toLocaleString()}</span>
-                    <span class="block text-orange-600">Shopee: Rp ${v.harga_jual_channels.shopee.toLocaleString()}</span>
-                    <span class="block text-pink-600">TikTok: Rp ${v.harga_jual_channels.tiktok.toLocaleString()}</span>
-                    <span class="block text-blue-600">Reseller B2B: Rp ${v.harga_jual_channels.reseller.toLocaleString()}</span>
+                <td class="p-3 font-semibold">${h.nama_model}</td>
+                <td class="p-3 font-bold text-red-700">Rp ${h.hpp_total.toLocaleString()}</td>
+                <td class="p-3 font-bold text-emerald-700">Rp ${(h.hpp_total + (h.hpp_total*(h.margin_percent/100))).toLocaleString()} (${h.margin_percent}%)</td>
+                <td class="p-3 text-gray-600">
+                    WA: Rp ${Math.round(h.harga_jual_channels.WhatsApp).toLocaleString()} | 
+                    SP: Rp ${Math.round(h.harga_jual_channels.Shopee).toLocaleString()} | 
+                    TT: Rp ${Math.round(h.harga_jual_channels.TikTok).toLocaleString()} | 
+                    RS: Rp ${Math.round(h.harga_jual_channels.Reseller).toLocaleString()} | 
+                    GR: Rp ${Math.round(h.harga_jual_channels.Grosir).toLocaleString()}
                 </td>
-                <td class="py-3 text-right space-x-1 whitespace-nowrap">
-                    <button onclick="editHPPEngine(${v.id_hpp})" class="px-2 py-1 bg-gray-100 rounded-md">Edit</button>
-                    <button onclick="deleteHPPEngine(${v.id_hpp})" class="px-2 py-1 bg-red-50 text-red-600 rounded-md">Hapus</button>
+                <td class="p-3 text-center space-x-2 whitespace-nowrap">
+                    <button onclick="downloadPDFSkemaHPP(${h.id})" class="text-[#396399] font-bold hover:underline">PDF Skema</button>
+                    <button onclick="hapusRecord('store_hpp', ${h.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -356,143 +363,243 @@ function renderHPPDashboard() {
     };
 }
 
-function editHPPEngine(id) {
-    db.transaction(["store_hpp"], "readonly").objectStore("store_hpp").get(id).onsuccess = function(e) {
-        const v = e.target.result;
-        if(!v) return;
-        document.getElementById("hpp-id").value = v.id_hpp;
-        document.getElementById("hpp-nama").value = v.nama_model;
-        document.getElementById("hpp-kain").value = v.biaya_kain;
-        document.getElementById("hpp-jahit").value = v.ongkos_jahit;
-        document.getElementById("hpp-sablon").value = v.aplikasi_sablon;
-        document.getElementById("hpp-pack").value = v.packaging;
-        document.getElementById("hpp-margin").value = v.margin_percent;
-        calculateLiveHPPFormEngine();
-    };
-}
-
-function deleteHPPEngine(id) {
-    if(confirm("Hapus rekam log komponen pembentuk HPP ini?")) {
-        db.transaction(["store_hpp"], "readwrite").objectStore("store_hpp").delete(id).onsuccess = () => refreshAllDashboardsData();
-    }
-}
-
-// --- TERMINAL POS KASIR SYSTEM ---
-function renderPOSDashboard() {
-    const select = document.getElementById("pos-produk-varian");
-    select.innerHTML = '<option value="">-- Hubungkan Item Varian --</option>';
+// ==========================================
+// C. LOGIKA TERMINAL POS KASIR ENGINE
+// ==========================================
+function populateDropdownsPOSnRetur() {
+    const posSel = document.getElementById('pos-produk-select');
+    const returSel = document.getElementById('retur-produk-select');
+    const hppSel = document.getElementById('hpp-model-select');
     
-    db.transaction(["store_produk"], "readonly").objectStore("store_produk").openCursor().onsuccess = function(e) {
+    posSel.innerHTML = '';
+    returSel.innerHTML = '';
+    hppSel.innerHTML = '';
+
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
             const p = cursor.value;
-            p.matriks_varian.forEach((mv, idx) => {
-                if(mv.stok > 0) {
-                    let opt = document.createElement("option");
-                    opt.value = `${p.id}|${mv.warna}|${mv.size}|${idx}|${mv.jual_varian}`;
-                    opt.innerText = `${p.nama_model} - ${mv.warna} (${mv.size}) [Price: Rp ${mv.jual_varian.toLocaleString()}]`;
-                    select.appendChild(opt);
-                }
-            });
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = `${p.nama_model} (${p.warna})`;
+            
+            posSel.appendChild(opt.cloneNode(true));
+            returSel.appendChild(opt.cloneNode(true));
+            hppSel.appendChild(opt.cloneNode(true));
             cursor.continue();
         }
     };
-    renderPOSLogTableRegister();
 }
 
-function calculateLivePOSPriceMatrix() {
-    const val = document.getElementById("pos-produk-varian").value;
-    if(!val) return;
-    const [, , , , jualVarian] = val.split("|");
-    const qty = parseInt(document.getElementById("pos-qty").value) || 1;
-    const diskon = parseFloat(document.getElementById("pos-diskon").value) || 0;
-    const ongkir = parseFloat(document.getElementById("pos-ongkir").value) || 0;
-    const dp = parseFloat(document.getElementById("pos-dp").value) || 0;
-    const status = document.getElementById("pos-status-bayar").value;
+function updatePosVarianDropdown() {
+    const prodId = document.getElementById('pos-produk-select').value;
+    const varianSel = document.getElementById('pos-varian-select');
+    varianSel.innerHTML = '';
+    if(!prodId) return;
 
-    let basePrice = parseFloat(jualVarian) || 0;
-    let grandTotal = (basePrice * qty) - diskon + ongkir;
-    if(grandTotal < 0) grandTotal = 0;
-
-    let sisa = 0;
-    if(status === 'Lunas') { document.getElementById("pos-dp").value = 0; sisa = 0; }
-    else { sisa = grandTotal - dp; }
-
-    document.getElementById("pos-sisa").value = sisa < 0 ? 0 : sisa;
-}
-
-document.getElementById("form-pos").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const val = document.getElementById("pos-produk-varian").value;
-    if(!val) return alert("Pilih produk varian terlebih dahulu!");
-
-    const [pId, warna, size, matrixIdx, jualVarian] = val.split("|");
-    const qty = parseInt(document.getElementById("pos-qty").value);
-    const platform = document.getElementById("pos-platform").value;
-    const status_bayar = document.getElementById("pos-status-bayar").value;
-    const dp = parseFloat(document.getElementById("pos-dp").value) || 0;
-    const sisa = parseFloat(document.getElementById("pos-sisa").value) || 0;
-    const tglOrder = document.getElementById("pos-tgl-order").value;
-    const pTime = getPeriodeFilterGlobal();
-
-    const tx = db.transaction(["store_produk", "store_transaksi", "store_jurnal_akuntansi"], "readwrite");
-    
-    tx.objectStore("store_produk").get(parseInt(pId)).onsuccess = function(ev) {
-        const prod = ev.target.result;
-        if(prod.matriks_varian[matrixIdx].stok < qty) {
-            return alert("Batal! Stok di sistem tidak memadai.");
-        }
-        
-        prod.matriks_varian[matrixIdx].stok -= qty;
-        tx.objectStore("store_produk").put(prod);
-
-        let unitPrice = parseFloat(jualVarian) || 0;
-        let diskon = parseFloat(document.getElementById("pos-diskon").value) || 0;
-        let ongkir = parseFloat(document.getElementById("pos-ongkir").value) || 0;
-        let grand = (unitPrice * qty) - diskon + ongkir;
-
-        const trx = {
-            tanggal_order: tglOrder, tanggal_selesai_po: document.getElementById("pos-tgl-po").value,
-            produk_id: parseInt(pId), varian_warna: warna, varian_size: size, qty, grand_total: grand,
-            diskon, ongkir, ekspedisi: document.getElementById("pos-kurir-resi").value, platform_order: platform,
-            metode_bayar: document.getElementById("pos-metode").value, status_bayar, jumlah_dp: dp, sisa_tagihan: sisa,
-            timestamp: Date.now(), bulan: pTime.bulan, tahun: pTime.tahun, nama_produk: prod.nama_model
-        };
-        tx.objectStore("store_transaksi").add(trx);
-
-        let cashReceived = status_bayar === 'Lunas' ? grand : dp;
-        if(cashReceived > 0) {
-            tx.objectStore("store_jurnal_akuntansi").add({
-                tanggal: tglOrder, tipe_jurnal: "POS", klasifikasi_akun: "Pendapatan POS Kasir",
-                nominal: cashReceived, keterangan_memo: `[POS Sales] ${prod.nama_model} (${warna}/${size}) x ${qty}`,
-                timestamp: Date.now(), bulan: pTime.bulan, tahun: pTime.tahun
-            });
-        }
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
+        const p = e.target.result;
+        p.matriks_varian.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = `${p.warna}|${v.size}|${v.jual_varian}`;
+            opt.innerText = `Warna ${p.warna} - Size ${v.size} [Stok:${v.stok}] - Rp ${v.jual_varian.toLocaleString()}`;
+            varianSel.appendChild(opt);
+        });
     };
+}
 
-    tx.oncomplete = () => { document.getElementById("form-pos").reset(); initSystemCoreHooks(); };
-});
+function addPosItem(e) {
+    e.preventDefault();
+    const prodId = document.getElementById('pos-produk-select').value;
+    const modelText = document.getElementById('pos-produk-select').options[document.getElementById('pos-produk-select').selectedIndex].text;
+    const varValue = document.getElementById('pos-varian-select').value;
+    const qty = parseInt(document.getElementById('pos-qty').value) || 1;
+    const platform = document.getElementById('pos-platform').value;
 
-function renderPOSLogTableRegister() {
-    const tbody = document.getElementById("table-pos-log");
-    tbody.innerHTML = "";
-    const pTime = getPeriodeFilterGlobal();
+    if(!varValue) return alert("Pilih varian produk.");
+    const [warna, size, hargaJual] = varValue.split('|');
 
-    db.transaction(["store_transaksi"], "readonly").objectStore("store_transaksi").openCursor().onsuccess = function(e) {
+    posCart.push({
+        produk_id: parseInt(prodId),
+        nama_model: modelText,
+        warna: warna,
+        size: size,
+        harga_satuan: parseFloat(hargaJual),
+        qty: qty,
+        platform: platform,
+        subtotal: parseFloat(hargaJual) * qty
+    });
+
+    renderPosCart();
+}
+
+function renderPosCart() {
+    const tbody = document.getElementById('pos-cart-body');
+    tbody.innerHTML = '';
+    let total = 0;
+
+    posCart.forEach((item, idx) => {
+        total += item.subtotal;
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-gray-100 text-xs";
+        tr.innerHTML = `
+            <td class="p-2 font-medium">${item.nama_model} (Warna:${item.warna} Size:${item.size})</td>
+            <td class="p-2">${item.platform}</td>
+            <td class="p-2 text-center">${item.qty}</td>
+            <td class="p-2 text-right">Rp ${item.harga_satuan.toLocaleString()}</td>
+            <td class="p-2 text-right font-bold">Rp ${item.subtotal.toLocaleString()}</td>
+            <td class="p-2 text-center"><button onclick="posCart.splice(${idx},1); renderPosCart();" class="text-red-600 font-bold hover:underline">Batal</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('pos-txt-subtotal').innerText = `Rp ${total.toLocaleString()}`;
+    recalculatePosBilling();
+}
+
+function recalculatePosBilling() {
+    let subtotal = 0;
+    posCart.forEach(i => subtotal += i.subtotal);
+    
+    const diskon = parseFloat(document.getElementById('pos-diskon').value) || 0;
+    const ongkir = parseFloat(document.getElementById('pos-ongkir').value) || 0;
+    const grandTotal = subtotal - diskon + ongkir;
+
+    document.getElementById('pos-txt-grandtotal').innerText = `Rp ${grandTotal.toLocaleString()}`;
+
+    const statusBayar = document.getElementById('pos-status-bayar').value;
+    if(statusBayar === 'DP') {
+        const dp = parseFloat(document.getElementById('pos-dp-amount').value) || 0;
+        document.getElementById('pos-sisa-tagihan').value = Math.max(0, grandTotal - dp);
+    } else if(statusBayar === 'Piutang') {
+        document.getElementById('pos-sisa-tagihan').value = grandTotal;
+    } else {
+        document.getElementById('pos-sisa-tagihan').value = 0;
+    }
+}
+
+function togglePoCalc() {
+    const v = document.getElementById('pos-status-bayar').value;
+    if (v === 'DP' || v === 'Piutang') {
+        document.getElementById('po-calc-container').classList.remove('hidden');
+        if(v === 'Piutang') {
+            document.getElementById('pos-dp-amount').value = 0;
+            document.getElementById('pos-dp-amount').disabled = true;
+        } else {
+            document.getElementById('pos-dp-amount').disabled = false;
+        }
+    } else {
+        document.getElementById('po-calc-container').classList.add('hidden');
+    }
+    recalculatePosBilling();
+}
+
+function checkoutPos() {
+    if(posCart.length === 0) return alert("Keranjang belanja kasir kosong.");
+
+    const diskon = parseFloat(document.getElementById('pos-diskon').value) || 0;
+    const ongkir = parseFloat(document.getElementById('pos-ongkir').value) || 0;
+    const metode = document.getElementById('pos-metode').value;
+    const statusBayar = document.getElementById('pos-status-bayar').value;
+    const dpVal = parseFloat(document.getElementById('pos-dp-amount').value) || 0;
+    const sisa = parseFloat(document.getElementById('pos-sisa-tagihan').value) || 0;
+    const tglPo = document.getElementById('pos-tgl-po').value || "";
+    const resi = document.getElementById('pos-resi').value || "-";
+    const dateNow = new Date().toISOString().split('T')[0];
+
+    const tx = db.transaction(['store_transaksi', 'store_produk', 'store_jurnal_akuntansi'], 'readwrite');
+
+    posCart.forEach(item => {
+        const trData = {
+            tanggal_order: dateNow,
+            tanggal_selesai_po: tglPo,
+            produk_id: item.produk_id,
+            nama_model: item.nama_model,
+            platform_order: item.platform,
+            varian_warna: item.warna,
+            varian_size: item.size,
+            qty: item.qty,
+            harga_satuan: item.harga_satuan,
+            diskon: diskon / posCart.length, // Alokasi rata diskon
+            ongkir: ongkir / posCart.length,
+            grand_total: item.subtotal - (diskon / posCart.length) + (ongkir / posCart.length),
+            ekspedisi_resi: resi,
+            metode_bayar: metode,
+            status_bayar: statusBayar,
+            jumlah_dp: dpVal / posCart.length,
+            sisa_tagihan: sisa / posCart.length,
+            timestamp: new Date().toISOString()
+        };
+        tx.objectStore('store_transaksi').add(trData);
+
+        // Potong stok real-time inventory
+        const pStore = tx.objectStore('store_produk');
+        pStore.get(item.produk_id).onsuccess = (ev) => {
+            let pObj = ev.target.result;
+            if(pObj) {
+                pObj.matriks_varian.forEach(mv => {
+                    if(mv.size === item.size) {
+                        mv.stok = Math.max(0, mv.stok - item.qty);
+                    }
+                });
+                pStore.put(pObj);
+            }
+        };
+    });
+
+    // Catat ke log akuntansi arus kas otomatis
+    let nominalKasMasuk = 0;
+    if(statusBayar === 'Lunas') {
+        posCart.forEach(i => nominalKasMasuk += i.subtotal);
+        nominalKasMasuk = nominalKasMasuk - diskon + ongkir;
+    } else if(statusBayar === 'DP') {
+        nominalKasMasuk = dpVal;
+    }
+
+    if(nominalKasMasuk > 0) {
+        const jurnal = {
+            tanggal: dateNow,
+            tipe_jurnal: 'Pemasukan POS',
+            klasifikasi_akun: 'Omset Transaksi POS',
+            nominal: nominalKasMasuk,
+            keterangan_memo: `Transaksi POS Terminal Platform: multi-items (${metode})`,
+            timestamp: new Date().toISOString()
+        };
+        tx.objectStore('store_jurnal_akuntansi').add(jurnal);
+    }
+
+    tx.oncomplete = () => {
+        alert("Checkout Sukses Berhasil! Membuka pop-up cetak struk...");
+        bukaStrukModal(dateNow, diskon, ongkir, metode, statusBayar, dpVal, sisa);
+        posCart = [];
+        document.getElementById('form-pos').reset();
+        renderPosCart();
+        refreshAllTablesAndDropdowns();
+    };
+}
+
+function renderTabelPOS() {
+    const tbody = document.getElementById('tabel-pos-body');
+    tbody.innerHTML = '';
+    const tx = db.transaction('store_transaksi', 'readonly');
+    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            if(v.bulan === pTime.bulan && v.tahun === pTime.tahun) {
-                const tr = document.createElement("tr");
+            const t = cursor.value;
+            if(matchFilterDate(t.tanggal_order)) {
+                const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-100 text-xs";
                 tr.innerHTML = `
-                    <td class="py-2 font-mono font-bold">#CVS-${v.id_transaksi}</td>
-                    <td><b>${v.nama_produk}</b><br><span class="text-[10px] text-gray-400">${v.varian_warna} / ${v.varian_size} via ${v.platform_order}</span></td>
-                    <td class="font-mono font-bold text-gray-900">Rp ${v.grand_total.toLocaleString()}</td>
-                    <td><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${v.status_bayar==='Lunas'?'bg-green-100 text-green-800':'bg-amber-100 text-amber-800'}">${v.status_bayar}</span></td>
-                    <td class="text-right whitespace-nowrap">
-                        <button onclick="bukaPopUpStrukThermalVertikal(${v.id_transaksi})" class="px-2 py-0.5 bg-[#396399] text-white font-bold rounded-lg text-[10px]">Struk</button>
-                        <button onclick="hapusPOSLogRegister(${v.id_transaksi})" class="text-red-600 ml-1 hover:underline">Hapus</button>
+                    <td class="p-3">${t.tanggal_order}<br><span class="text-[10px] text-gray-400">${t.timestamp.substring(11,16)} WIB</span></td>
+                    <td class="p-3 font-semibold">${t.nama_model} (${t.varian_warna} - ${t.varian_size})</td>
+                    <td class="p-3 text-center font-bold">${t.qty}</td>
+                    <td class="p-3"><span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">${t.platform_order}</span></td>
+                    <td class="p-3 font-bold">Rp ${t.grand_total.toLocaleString()}</td>
+                    <td class="p-3"><span class="font-bold uppercase ${t.status_bayar==='Lunas'?'text-emerald-700':'text-red-600'}">${t.status_bayar}</span><br><span class="text-[10px] text-gray-500">Sisa: Rp ${t.sisa_tagihan.toLocaleString()}</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="hapusRecord('store_transaksi', ${t.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -502,478 +609,620 @@ function renderPOSLogTableRegister() {
     };
 }
 
-function hapusPOSLogRegister(id) {
-    if(confirm("Hapus rekam log kasir ini?")) {
-        db.transaction(["store_transaksi"], "readwrite").objectStore("store_transaksi").delete(id).onsuccess = () => refreshAllDashboardsData();
+// Thermal Printer Pop-up Modal Rendering Logic
+function bukaStrukModal(date, diskon, ongkir, metode, status, dp, sisa) {
+    document.getElementById('struk-txt-date').innerText = `${date} | ${new Date().toLocaleTimeString()} WIB`;
+    const container = document.getElementById('struk-items-container');
+    container.innerHTML = '';
+
+    let subtotal = 0;
+    posCart.forEach(i => {
+        subtotal += i.subtotal;
+        const div = document.createElement('div');
+        div.className = "flex justify-between";
+        div.innerHTML = `<span>${i.nama_model.substring(0,18)} (${i.size}) x${i.qty}</span><span>Rp ${i.subtotal.toLocaleString()}</span>`;
+        container.appendChild(div);
+    });
+
+    const grandTotal = subtotal - diskon + ongkir;
+    document.getElementById('struk-subtotal').innerText = `Rp ${subtotal.toLocaleString()}`;
+    document.getElementById('struk-diskon').innerText = `Rp ${diskon.toLocaleString()}`;
+    document.getElementById('struk-ongkir').innerText = `Rp ${ongkir.toLocaleString()}`;
+    document.getElementById('struk-grandtotal').innerText = `Rp ${grandTotal.toLocaleString()}`;
+
+    if(status === 'Lunas') {
+        document.getElementById('struk-lbl-bayar').innerText = "Bayar Bersih:";
+        document.getElementById('struk-bayar').innerText = `Rp ${grandTotal.toLocaleString()} (${metode})`;
+        document.getElementById('struk-row-sisa').classList.add('hidden');
+    } else {
+        document.getElementById('struk-lbl-bayar').innerText = "Bayar DP:";
+        document.getElementById('struk-bayar').innerText = `Rp ${dp.toLocaleString()} (${metode})`;
+        document.getElementById('struk-row-sisa').classList.remove('hidden');
+        document.getElementById('struk-sisa').innerText = `Rp ${sisa.toLocaleString()}`;
     }
+
+    document.getElementById('modal-struk').classList.remove('hidden');
+    document.getElementById('modal-struk').classList.add('flex');
 }
 
-function bukaPopUpStrukThermalVertikal(id) {
-    db.transaction(["store_transaksi"], "readonly").objectStore("store_transaksi").get(id).onsuccess = function(e) {
-        const v = e.target.result;
-        if(!v) return;
-        document.getElementById("thermal-print-area").innerHTML = `
-            <div style="text-align:center; font-weight:bold; font-size:12px;">CLOTHVERSH SYSTEM</div>
-            <div style="text-align:center; font-size:9px; color:#555;">Apple-Style Apparel Platform</div>
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            <div>Nota ID: #CVS-${v.id_transaksi}</div>
-            <div>Tanggal: ${v.tanggal_order}</div>
-            <div>Platform: ${v.platform_order}</div>
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            <div style="font-weight:bold;">${v.nama_produk}</div>
-            <div>Varian: ${v.varian_warna} (${v.varian_size}) x ${v.qty}</div>
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            <div style="display:flex; justify-content:space-between;"><span>Diskon:</span><span>Rp ${v.diskon.toLocaleString()}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>Ongkir:</span><span>Rp ${v.ongkir.toLocaleString()}</span></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Grand Total:</span><span>Rp ${v.grand_total.toLocaleString()}</span></div>
-            <div style="display:flex; justify-content:space-between; color:#396399;"><span>DP Masuk:</span><span>Rp ${v.jumlah_dp.toLocaleString()}</span></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold; color:red;"><span>Sisa Tagihan:</span><span>Rp ${v.sisa_tagihan.toLocaleString()}</span></div>
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            <div style="text-align:center; font-size:9px; margin-top:4px;">Terima Kasih Atas Kunjungan Anda</div>
-        `;
-        document.getElementById("modal-receipt-view").classList.remove("hidden");
-    };
+function closeStrukModal() {
+    document.getElementById('modal-struk').classList.remove('flex');
+    document.getElementById('modal-struk').classList.add('hidden');
 }
 
-// --- DASHBOARD D: REKAPAN & VISUALISASI GRAFIK ---
-function renderAnalyticsDashboard() {
-    const pTime = getPeriodeFilterGlobal();
-    let totalPcs = 0;
-    let modelMap = {};
-    let platformMap = { "WhatsApp": 0, "Shopee": 0, "TikTok": 0, "Reseller": 0, "Grosir": 0 };
-    let timelineMap = {};
+// ==========================================
+// D. LOGIKA REKAPAN & VISUALISASI CHART.JS
+// ==========================================
+function renderAnalisisChartsDanTabel() {
+    const tbody = document.getElementById('tabel-analisis-body');
+    tbody.innerHTML = '';
 
-    const table = document.querySelector("#panel-analytics table");
-    // Clear dynamic rows except headers
-    const rows = table.querySelectorAll("tr");
-    for(let i=1; i<rows.length; i++) rows[i].remove();
+    let totalQty = 0;
+    let modelCounts = {};
+    let platformCounts = {};
+    let dailyTrendData = {};
 
-    db.transaction(["store_transaksi"], "readonly").objectStore("store_transaksi").openCursor().onsuccess = function(e) {
+    const tx = db.transaction('store_transaksi', 'readonly');
+    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            if(v.bulan === pTime.bulan && v.tahun === pTime.tahun) {
-                totalPcs += v.qty;
-                modelMap[v.nama_produk] = (modelMap[v.nama_produk] || 0) + v.qty;
-                
-                if(platformMap[v.platform_order] !== undefined) {
-                    platformMap[v.platform_order] += v.grand_total;
-                }
+            const t = cursor.value;
+            if(matchFilterDate(t.tanggal_order)) {
+                totalQty += t.qty;
+                modelCounts[t.nama_model] = (modelCounts[t.nama_model] || 0) + t.qty;
+                platformCounts[t.platform_order] = (platformCounts[t.platform_order] || 0) + t.qty;
+                dailyTrendData[t.tanggal_order] = (dailyTrendData[t.tanggal_order] || 0) + t.grand_total;
 
-                timelineMap[v.tanggal_order] = (timelineMap[v.tanggal_order] || 0) + v.qty;
-
-                // Append row to Detail Rekapan Barang Terjual
-                const tr = document.createElement("tr");
-                tr.className = "border-b border-gray-100 text-xs text-gray-700 hover:bg-gray-50";
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 hover:bg-gray-50";
                 tr.innerHTML = `
-                    <td class="py-2">${v.tanggal_order}</td>
-                    <td class="font-bold text-gray-900">${v.nama_produk}</td>
-                    <td>${v.varian_warna}</td>
-                    <td>${v.varian_size}</td>
-                    <td>${v.qty} Pcs</td>
-                    <td><span class="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-medium">${v.platform_order}</span></td>
-                    <td class="text-right font-mono font-bold">Rp ${v.grand_total.toLocaleString()}</td>
+                    <td class="p-3">${t.tanggal_order}</td>
+                    <td class="p-3 font-medium">${t.nama_model}</td>
+                    <td class="p-3">${t.varian_warna} - ${t.varian_size}</td>
+                    <td class="p-3 text-center font-bold">${t.qty}</td>
+                    <td class="p-3">${t.platform_order}</td>
+                    <td class="p-3 text-right font-semibold">Rp ${t.grand_total.toLocaleString()}</td>
                 `;
-                table.appendChild(tr);
+                tbody.appendChild(tr);
             }
             cursor.continue();
         } else {
-            // Widget Processing
-            document.getElementById("widget-total-pcs").innerText = totalPcs + " Pcs";
+            // Update Widgets Data DOM
+            document.getElementById('widget-total-qty').innerText = `${totalQty} Pcs`;
             
             let topModel = "-";
-            let maxModel = 0;
-            for(let m in modelMap) { if(modelMap[m] > maxModel) { maxModel = modelMap[m]; topModel = m; } }
-            document.getElementById("widget-top-model").innerText = topModel;
+            let maxM = 0;
+            for(let m in modelCounts){ if(modelCounts[m]>maxM){ maxM=modelCounts[m]; topModel=m; } }
+            document.getElementById('widget-model-laris').innerText = topModel;
 
             let topPlat = "-";
-            let maxPlat = -1;
-            for(let p in platformMap) { if(platformMap[p] > maxPlat && platformMap[p] > 0) { maxPlat = platformMap[p]; topPlat = p; } }
-            document.getElementById("widget-top-platform").innerText = topPlat;
+            let maxP = 0;
+            for(let p in platformCounts){ if(platformCounts[p]>maxP){ maxP=platformCounts[p]; topPlat=p; } }
+            document.getElementById('widget-platform-top').innerText = topPlat;
 
-            // Injeksi update chart data jika modul sedang terbuka
-            updateChartInstances(timelineMap, platformMap);
+            // Render/Update Chart.js Instances Canvas
+            rebuildCharts(dailyTrendData, platformCounts);
         }
     };
 }
 
-function initChartsRenderEngine() {
-    const ctxTrend = document.getElementById('chart-tren-penjualan');
-    const ctxPie = document.getElementById('chart-pie-platform');
-    if(!ctxTrend || !ctxPie) return;
-
+function rebuildCharts(trendData, platformData) {
+    // 1. Line/Bar Chart Tren Penjualan
+    const ctxTrend = document.getElementById('chart-tren-penjualan').getContext('2d');
     if(trendChartInstance) trendChartInstance.destroy();
-    if(pieChartInstance) pieChartInstance.destroy();
+    
+    const labelsTrend = Object.keys(trendData).sort();
+    const valuesTrend = labelsTrend.map(k => trendData[k]);
 
     trendChartInstance = new Chart(ctxTrend, {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Volume Terjual (Pcs)', data: [], borderColor: '#396399', backgroundColor: 'rgba(57, 99, 153, 0.05)', fill: true, tension: 0.2 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-
-    pieChartInstance = new Chart(ctxPie, {
-        type: 'doughnut',
-        data: { labels: ['WhatsApp', 'Shopee', 'TikTok', 'Reseller', 'Grosir'], datasets: [{ data: [0,0,0,0,0], backgroundColor: ['#396399', '#f97316', '#ec4899', '#3b82f6', '#10b981'] }] },
+        data: {
+            labels: labelsTrend.length ? labelsTrend : ['No Data'],
+            datasets: [{
+                label: 'Omset Penjualan Bersih (Rp)',
+                data: valuesTrend.length ? valuesTrend : [0],
+                borderColor: '#396399',
+                backgroundColor: 'rgba(57, 99, 153, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2
+            }]
+        },
         options: { responsive: true, maintainAspectRatio: false }
     });
 
-    refreshAllDashboardsData();
+    // 2. Pie/Donut Chart Distribusi Platform
+    const ctxPlat = document.getElementById('chart-distribusi-platform').getContext('2d');
+    if(platformChartInstance) platformChartInstance.destroy();
+
+    const labelsPlat = Object.keys(platformData);
+    const valuesPlat = labelsPlat.map(k => platformData[k]);
+
+    platformChartInstance = new Chart(ctxPlat, {
+        type: 'doughnut',
+        data: {
+            labels: labelsPlat.length ? labelsPlat : ['Belum Ada'],
+            datasets: [{
+                data: valuesPlat.length ? valuesPlat : [1],
+                backgroundColor: ['#1E3A8A', '#396399', '#10B981', '#F59E0B', '#EF4444']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
 }
 
-function updateChartInstances(timeline, platforms) {
-    if(!trendChartInstance || !pieChartInstance) return;
-    
-    // Update Timeline Line Chart
-    const sortedDates = Object.keys(timeline).sort();
-    trendChartInstance.data.labels = sortedDates;
-    trendChartInstance.data.datasets[0].data = sortedDates.map(d => timeline[d]);
-    trendChartInstance.update();
-
-    // Update Platform Doughnut Chart
-    pieChartInstance.data.datasets[0].data = [
-        platforms["WhatsApp"] || 0,
-        platforms["Shopee"] || 0,
-        platforms["TikTok"] || 0,
-        platforms["Reseller"] || 0,
-        platforms["Grosir"] || 0
-    ];
-    pieChartInstance.update();
+// ==========================================
+// E. LOGIKA MODUL RETUR & BARANG CACAT
+// ==========================================
+function toggleReturFields() {
+    const j = document.getElementById('retur-jenis').value;
+    if(j === 'Tukar Size') {
+        document.getElementById('tukar-size-container').classList.remove('hidden');
+        updateReturTujuanVarianDropdown();
+    } else {
+        document.getElementById('tukar-size-container').classList.add('hidden');
+    }
 }
 
-// --- MODUL E: MANAGEMENT RETUR & CAKUT (REJECT) ---
-function renderReturDashboard() {
-    // Sync Dropdown Options from Store Master Produk
-    const select = document.getElementById("retur-model-select");
-    select.innerHTML = '<option value="">-- Hubungkan Berkas Master --</option>';
-    db.transaction(["store_produk"], "readonly").objectStore("store_produk").openCursor().onsuccess = function(e) {
-        const cursor = e.target.result;
-        if(cursor) {
-            let opt = document.createElement("option");
-            opt.value = cursor.value.nama_model; opt.innerText = cursor.value.nama_model;
-            select.appendChild(opt);
-            cursor.continue();
-        }
-    };
+function updateReturVarianDropdown() {
+    const prodId = document.getElementById('retur-produk-select').value;
+    const varSel = document.getElementById('retur-varian-select');
+    varSel.innerHTML = '';
+    if(!prodId) return;
 
-    const tbody = document.getElementById("table-retur-log");
-    tbody.innerHTML = "";
-    db.transaction(["store_retur_reject"], "readonly").objectStore("store_retur_reject").openCursor().onsuccess = function(e) {
-        const cursor = e.target.result;
-        if(cursor) {
-            const v = cursor.value;
-            const tr = document.createElement("tr");
-            tr.className = "border-b border-gray-100 text-xs";
-            tr.innerHTML = `
-                <td class="py-2">${v.tanggal}</td>
-                <td><span class="px-2 py-0.5 font-bold rounded text-[10px] ${v.jenis==='Tukar Size'?'bg-blue-50 text-blue-700':'bg-red-50 text-red-700'}">${v.jenis}</span></td>
-                <td><b>${v.nama_model}</b><br><span class="text-[10px] text-gray-400">${v.warna} / Size: ${v.size} -> ${v.size_baru || '-'}</span></td>
-                <td>${v.qty} Pcs</td>
-                <td class="text-right font-mono text-red-600 font-bold">Rp ${v.nominal_rugi.toLocaleString()}</td>
-                <td class="text-right"><button onclick="hapusLogReturReject(${v.id_retur})" class="text-red-500 hover:underline">Hapus</button></td>
-            `;
-            tbody.appendChild(tr);
-            cursor.continue();
-        }
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
+        const p = e.target.result;
+        p.matriks_varian.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = `${v.size}|${v.hpp_varian}`;
+            opt.innerText = `Size ${v.size} (Stok:${v.stok})`;
+            varSel.appendChild(opt);
+        });
+        toggleReturFields();
     };
 }
 
-document.getElementById("form-retur").addEventListener("submit", function(e) {
+function updateReturTujuanVarianDropdown() {
+    const prodId = document.getElementById('retur-produk-select').value;
+    const destSel = document.getElementById('retur-tujuan-varian-select');
+    destSel.innerHTML = '';
+    if(!prodId) return;
+
+    const tx = db.transaction('store_produk', 'readonly');
+    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
+        const p = e.target.result;
+        p.matriks_varian.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.size;
+            opt.innerText = `Tukar Ke Size ${v.size} (Tersedia:${v.stok})`;
+            destSel.appendChild(opt);
+        });
+    };
+}
+
+function saveReturReject(e) {
     e.preventDefault();
-    const jenis = document.getElementById("retur-jenis").value;
-    const model = document.getElementById("retur-model-select").value;
-    const warna = document.getElementById("retur-warna").value;
-    const size = document.getElementById("retur-size").value;
-    const qty = parseInt(document.getElementById("retur-qty").value);
-    const sizeBaru = document.getElementById("retur-size-baru").value;
-    const ket = document.getElementById("retur-keterangan").value;
-    const pTime = getPeriodeFilterGlobal();
-    const today = new Date().toISOString().split('T')[0];
+    const jenis = document.getElementById('retur-jenis').value;
+    const prodId = parseInt(document.getElementById('retur-produk-select').value);
+    const modelText = document.getElementById('retur-produk-select').options[document.getElementById('retur-produk-select').selectedIndex].text;
+    const varVal = document.getElementById('retur-varian-select').value;
+    const qty = parseInt(document.getElementById('retur-qty').value) || 1;
+    const ket = document.getElementById('retur-keterangan').value;
+    const dateNow = new Date().toISOString().split('T')[0];
 
-    const tx = db.transaction(["store_produk", "store_retur_reject", "store_jurnal_akuntansi"], "readwrite");
-    
-    // Find item matching logic manually from model name
-    tx.objectStore("store_produk").openCursor().onsuccess = function(ev) {
-        const cursor = ev.target.result;
+    if(!varVal) return alert("Pilih varian.");
+    const [sizeAsal, hppAsal] = varVal.split('|');
+    const nominalRugi = jenis === 'Cacat Produksi' ? parseFloat(hppAsal) * qty : 0;
+
+    const tx = db.transaction(['store_retur_reject', 'store_produk', 'store_jurnal_akuntansi'], 'readwrite');
+
+    const logData = {
+        tanggal: dateNow,
+        jenis: jenis,
+        produk_id: prodId,
+        nama_model: modelText,
+        size: sizeAsal,
+        qty: qty,
+        keterangan: ket,
+        nominal_rugi: nominalRugi,
+        timestamp: new Date().toISOString()
+    };
+    tx.objectStore('store_retur_reject').add(logData);
+
+    const pStore = tx.objectStore('store_produk');
+    pStore.get(prodId).onsuccess = (ev) => {
+        let pObj = ev.target.result;
+        if(pObj) {
+            if(jenis === 'Cacat Produksi') {
+                // Potong secara permanen stok rusak
+                pObj.matriks_varian.forEach(mv => { if(mv.size === sizeAsal) mv.stok = Math.max(0, mv.stok - qty); });
+            } else {
+                // Tukar size: kembalikan stok asal, kurangi stok baru tujuan
+                const sizeTujuan = document.getElementById('retur-tujuan-varian-select').value;
+                pObj.matriks_varian.forEach(mv => {
+                    if(mv.size === sizeAsal) mv.stok += qty;
+                    if(mv.size === sizeTujuan) mv.stok = Math.max(0, mv.stok - qty);
+                });
+            }
+            pStore.put(pObj);
+        }
+    };
+
+    // Jika barang cacat, otomatis lempar kerugian ke beban akuntansi operasional
+    if(jenis === 'Cacat Produksi' && nominalRugi > 0) {
+        const bJurnal = {
+            tanggal: dateNow,
+            tipe_jurnal: 'Pengeluaran',
+            klasifikasi_akun: 'Kerugian Pabrik (Reject)',
+            nominal: nominalRugi,
+            keterangan_memo: `Beban rugi otomatis reject produksi model: ${modelText} x${qty}`,
+            timestamp: new Date().toISOString()
+        };
+        tx.objectStore('store_jurnal_akuntansi').add(bJurnal);
+    }
+
+    tx.oncomplete = () => {
+        document.getElementById('form-retur').reset();
+        refreshAllTablesAndDropdowns();
+        alert("Log status retur/reject diproses & disinkronisasi otomatis.");
+    };
+}
+
+function renderTabelRetur() {
+    const tbody = document.getElementById('tabel-retur-body');
+    tbody.innerHTML = '';
+    const tx = db.transaction('store_retur_reject', 'readonly');
+    tx.objectStore('store_retur_reject').openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
         if(cursor) {
-            const prod = cursor.value;
-            if(prod.nama_model === model) {
-                let matchedHpp = 0;
-                prod.matriks_varian.forEach(mv => {
-                    if(mv.warna.toLowerCase() === warna.toLowerCase() && mv.size.toLowerCase() === size.toLowerCase()) {
-                        matchedHpp = mv.hpp_varian;
-                    }
-                });
-
-                if(jenis === "Tukar Size") {
-                    // Balikkan stok lama, kurangi stok baru
-                    prod.matriks_varian.forEach(mv => {
-                        if(mv.warna.toLowerCase() === warna.toLowerCase()) {
-                            if(mv.size.toLowerCase() === size.toLowerCase()) mv.stok += qty;
-                            if(mv.size.toLowerCase() === sizeBaru.toLowerCase()) mv.stok -= qty;
-                        }
-                    });
-                } else {
-                    // Cacat Produksi (Reject) -> Potong stok permanen
-                    prod.matriks_varian.forEach(mv => {
-                        if(mv.warna.toLowerCase() === warna.toLowerCase() && mv.size.toLowerCase() === size.toLowerCase()) {
-                            mv.stok -= qty;
-                        }
-                    });
-                    // Kerugian otomatis dilempar ke jurnal Akuntansi
-                    let totalRugi = matchedHpp * qty;
-                    tx.objectStore("store_jurnal_akuntansi").add({
-                        tanggal: today, tipe_jurnal: "Pengeluaran", klasifikasi_akun: "Kerugian Barang Reject",
-                        nominal: totalRugi, keterangan_memo: `[Otomatis Reject] ${model} (${warna}/${size}) x ${qty} Pcs. Memo: ${ket}`,
-                        timestamp: Date.now(), bulan: pTime.bulan, tahun: pTime.tahun
-                    });
-                }
-                
-                tx.objectStore("store_produk").put(prod);
-                tx.objectStore("store_retur_reject").add({
-                    tanggal: today, jenis, nama_model: model, warna, size, qty, size_baru: sizeBaru,
-                    keterangan: ket, nominal_rugi: jenis === "Cacat Produksi" ? (matchedHpp * qty) : 0, timestamp: Date.now()
-                });
-                return;
+            const r = cursor.value;
+            if(matchFilterDate(r.tanggal)) {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 text-xs";
+                tr.innerHTML = `
+                    <td class="p-3">${r.tanggal}</td>
+                    <td class="p-3 font-bold ${r.jenis==='Cacat Produksi'?'text-red-600':'text-blue-600'}">${r.jenis}</td>
+                    <td class="p-3">${r.nama_model} (Size:${r.size})</td>
+                    <td class="p-3 text-center font-bold">${r.qty}</td>
+                    <td class="p-3 font-semibold text-red-700">Rp ${r.nominal_rugi.toLocaleString()}</td>
+                    <td class="p-3 italic text-gray-500">"${r.keterangan}"</td>
+                    <td class="p-3 text-center">
+                        <button onclick="hapusRecord('store_retur_reject', ${r.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             }
             cursor.continue();
         }
     };
-
-    tx.oncomplete = () => { document.getElementById("form-retur").reset(); refreshAllDashboardsData(); };
-});
-
-function hapusLogReturReject(id) {
-    if(confirm("Hapus log rekam masalah ini?")) {
-        db.transaction(["store_retur_reject"], "readwrite").objectStore("store_retur_reject").delete(id).onsuccess = () => refreshAllDashboardsData();
-    }
 }
 
-// --- PEROMBAKAN TOTAL FINANSIAL AKUNTANSI SYSTEM ---
-function switchFinanceSubTab(target) {
-    ['sub-penjualan', 'sub-pengeluaran', 'sub-masuk'].forEach(sub => {
-        document.getElementById(`panel-${sub}`).classList.add('hidden');
-        document.getElementById(`btn-${sub}`).className = "px-4 py-2 text-xs font-bold text-gray-400 hover:text-gray-900";
+// ==========================================
+// F. LOGIKA AKUNTANSI & LAPORAN KEUANGAN
+// ==========================================
+function switchKeuanganTab(tabId) {
+    currentKeuanganTab = tabId;
+    ['pane-tab-omset', 'pane-tab-pengeluaran', 'pane-tab-pemasukan'].forEach(p => document.getElementById(p).classList.add('hidden'));
+    ['btn-tab-omset', 'btn-tab-pengeluaran', 'btn-tab-pemasukan'].forEach(b => {
+        document.getElementById(b).classList.remove('bg-white', 'text-[#396399]', 'shadow-sm');
+        document.getElementById(b).classList.add('text-gray-600');
     });
-    document.getElementById(`panel-${target}`).classList.remove('hidden');
-    document.getElementById(`btn-${target}`).className = "px-4 py-2 text-xs font-bold border-b-2 border-[#396399] text-gray-900";
+
+    if(tabId === 'tab-omset') {
+        document.getElementById('pane-tab-omset').classList.remove('hidden');
+        document.getElementById('btn-tab-omset').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
+    } else if(tabId === 'tab-pengeluaran') {
+        document.getElementById('pane-tab-pengeluaran').classList.remove('hidden');
+        document.getElementById('btn-tab-pengeluaran').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
+    } else {
+        document.getElementById('pane-tab-pemasukan').classList.remove('hidden');
+        document.getElementById('btn-tab-pemasukan').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
+    }
+    renderTabelKeuanganAkuntansi();
 }
 
-document.getElementById("form-jurnal-keluar").addEventListener("submit", function(e) {
+function saveJurnalManual(e, tipe) {
     e.preventDefault();
-    postManualAccountingJournalEntry("Pengeluaran", "jurnal-keluar-akun", "jurnal-keluar-nominal", "jurnal-keluar-memo");
-});
+    const dateNow = new Date().toISOString().split('T')[0];
+    let akun = "";
+    let nominal = 0;
+    let memo = "";
 
-document.getElementById("form-jurnal-masuk").addEventListener("submit", function(e) {
-    e.preventDefault();
-    postManualAccountingJournalEntry("Uang Masuk", "jurnal-masuk-akun", "jurnal-masuk-nominal", "jurnal-masuk-memo");
-});
+    if(tipe === 'Pengeluaran') {
+        akun = document.getElementById('keluar-akun').value;
+        nominal = parseFloat(document.getElementById('keluar-nominal').value) || 0;
+        memo = document.getElementById('keluar-memo').value;
+    } else {
+        akun = document.getElementById('masuk-akun').value;
+        nominal = parseFloat(document.getElementById('masuk-nominal').value) || 0;
+        memo = document.getElementById('masuk-memo').value;
+    }
 
-function postManualAccountingJournalEntry(type, elAkun, elNominal, elMemo) {
-    const pTime = getPeriodeFilterGlobal();
-    const today = new Date().toISOString().split('T')[0];
-    const payload = {
-        tanggal: today, tipe_jurnal: type, klasifikasi_akun: document.getElementById(elAkun).value,
-        nominal: parseFloat(document.getElementById(elNominal).value) || 0,
-        keterangan_memo: document.getElementById(elMemo).value,
-        timestamp: Date.now(), bulan: pTime.bulan, tahun: pTime.tahun
+    const dataJurnal = {
+        tanggal: dateNow,
+        tipe_jurnal: tipe,
+        klasifikasi_akun: akun,
+        nominal: nominal,
+        keterangan_memo: memo,
+        timestamp: new Date().toISOString()
     };
-    db.transaction(["store_jurnal_akuntansi"], "readwrite").objectStore("store_jurnal_akuntansi").add(payload).oncomplete = () => {
-        document.getElementById(elNominal).value = ""; document.getElementById(elMemo).value = "";
-        refreshAllDashboardsData();
+
+    const tx = db.transaction('store_jurnal_akuntansi', 'readwrite');
+    tx.objectStore('store_jurnal_akuntansi').add(dataJurnal);
+    tx.oncomplete = () => {
+        document.getElementById('form-jurnal-keluar').reset();
+        document.getElementById('form-jurnal-masuk').reset();
+        refreshAllTablesAndDropdowns();
+        alert(`Buku kas internal jurnaling ${tipe} tersimpan.`);
     };
 }
 
-function renderFinanceDashboard() {
-    const pTime = getPeriodeFilterGlobal();
-    const filterTipe = document.getElementById("finance-filter-tipe").value; // bulan / hari / tahun
-    const todayStr = new Date().toISOString().split('T')[0];
+function renderTabelKeuanganAkuntansi() {
+    const tOmset = document.getElementById('tabel-keuangan-omset-body');
+    const tKeluar = document.getElementById('tabel-keuangan-pengeluaran-body');
+    const tMasuk = document.getElementById('tabel-keuangan-pemasukan-body');
 
-    let omsetPOS = 0, totalBeban = 0, totalDanaMasukLuar = 0;
+    tOmset.innerHTML = '';
+    tKeluar.innerHTML = '';
+    tMasuk.innerHTML = '';
 
-    const tPenjualan = document.getElementById("table-fin-penjualan");
-    const tKeluar = document.getElementById("table-jurnal-keluar");
-    const tMasuk = document.getElementById("table-jurnal-masuk");
-    
-    tPenjualan.innerHTML = ""; tKeluar.innerHTML = ""; tMasuk.innerHTML = "";
-
-    db.transaction(["store_jurnal_akuntansi"], "readonly").objectStore("store_jurnal_akuntansi").openCursor().onsuccess = function(e) {
+    const tx = db.transaction('store_jurnal_akuntansi', 'readonly');
+    tx.objectStore('store_jurnal_akuntansi').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            let passFilter = false;
-
-            if (filterTipe === 'bulan' && v.bulan === pTime.bulan && v.tahun === pTime.tahun) passFilter = true;
-            else if (filterTipe === 'hari' && v.tanggal === todayStr) passFilter = true;
-            else if (filterTipe === 'tahun' && v.tahun === pTime.tahun) passFilter = true;
-
-            if(passFilter) {
-                const tr = document.createElement("tr");
-                tr.className = "border-b border-gray-100 text-xs text-gray-700 hover:bg-gray-50";
-
-                if(v.tipe_jurnal === "POS") {
-                    omsetPOS += v.nominal;
-                    tr.innerHTML = `<td>${v.tanggal}</td><td><b>POS System</b></td><td>${v.keterangan_memo}</td><td class="text-right font-mono font-bold text-green-700">Rp ${v.nominal.toLocaleString()}</td>`;
-                    tPenjualan.appendChild(tr);
-                } else if(v.tipe_jurnal === "Pengeluaran") {
-                    totalBeban += v.nominal;
-                    tr.innerHTML = `<td>${v.tanggal}</td><td class="text-red-600 font-semibold">${v.klasifikasi_akun}</td><td>${v.keterangan_memo}</td><td class="text-right font-mono">Rp ${v.nominal.toLocaleString()}</td><td class="text-right"><button onclick="hapusBarisJurnalFin(${v.id_jurnal})" class="text-red-500">Hapus</button></td>`;
+            const j = cursor.value;
+            if(matchFilterDate(j.tanggal)) {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 text-xs";
+                
+                if(j.tipe_jurnal === 'Pemasukan POS') {
+                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-emerald-700">Rp ${j.nominal.toLocaleString()}</td>`;
+                    tOmset.appendChild(tr);
+                } else if(j.tipe_jurnal === 'Pengeluaran') {
+                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold text-red-700">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-red-600">Rp ${j.nominal.toLocaleString()}</td><td class="p-3 text-center"><button onclick="hapusRecord('store_jurnal_akuntansi', ${j.id})" class="text-red-600 font-bold hover:underline">Hapus</button></td>`;
                     tKeluar.appendChild(tr);
-                } else if(v.tipe_jurnal === "Uang Masuk") {
-                    totalDanaMasukLuar += v.nominal;
-                    tr.innerHTML = `<td>${v.tanggal}</td><td class="text-blue-600 font-semibold">${v.klasifikasi_akun}</td><td>${v.keterangan_memo}</td><td class="text-right font-mono">Rp ${v.nominal.toLocaleString()}</td><td class="text-right"><button onclick="hapusBarisJurnalFin(${v.id_jurnal})" class="text-red-500">Hapus</button></td>`;
+                } else if(j.tipe_jurnal === 'Pemasukan Lain') {
+                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold text-blue-700">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-blue-600">Rp ${j.nominal.toLocaleString()}</td><td class="p-3 text-center"><button onclick="hapusRecord('store_jurnal_akuntansi', ${j.id})" class="text-red-600 font-bold hover:underline">Hapus</button></td>`;
                     tMasuk.appendChild(tr);
                 }
             }
             cursor.continue();
-        } else {
-            let labaBersihReal = (omsetPOS + totalDanaMasukLuar) - totalBeban;
-            document.getElementById("sum-omset").innerText = "Rp " + omsetPOS.toLocaleString();
-            document.getElementById("sum-pengeluaran").innerText = "Rp " + totalBeban.toLocaleString();
-            document.getElementById("sum-laba").innerText = "Rp " + labaBersihReal.toLocaleString();
-            if(labaBersihReal < 0) {
-                document.getElementById("sum-laba").className = "text-2xl font-bold text-red-600 mt-1";
-            } else {
-                document.getElementById("sum-laba").className = "text-2xl font-bold text-green-700 mt-1";
-            }
         }
     };
 }
 
-function hapusBarisJurnalFin(id) {
-    if(confirm("Hapus baris transaksi jurnal akuntansi ini?")) {
-        db.transaction(["store_jurnal_akuntansi"], "readwrite").objectStore("store_jurnal_akuntansi").delete(id).onsuccess = () => refreshAllDashboardsData();
-    }
-}
+// ==========================================
+// G. DYNAMIC ENKAPSULASI JSON BRIDGE (SYNC)
+// ==========================================
+function backupDatabaseJSON() {
+    const backupData = {};
+    const storesList = ['store_produk', 'store_hpp', 'store_transaksi', 'store_jurnal_akuntansi', 'store_retur_reject'];
+    let counter = 0;
 
-// --- INTER-DEVICE DATA SYNC BRIDGE ---
-function exportFullSystemBackup() {
-    const backup = {};
-    const stores = ["store_produk", "store_hpp", "store_transaksi", "store_jurnal_akuntansi", "store_retur_reject"];
-    let processed = 0;
-
-    stores.forEach(name => {
-        backup[name] = [];
-        db.transaction([name], "readonly").objectStore(name).openCursor().onsuccess = function(e) {
-            const cursor = e.target.result;
-            if(cursor) { backup[name].push(cursor.value); cursor.continue(); }
-        };
-        db.transaction([name], "readonly").oncomplete = function() {
-            processed++;
-            if(processed === stores.length) {
-                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = `CLOTHVERSH_LIGHT_BACKUP_${Date.now()}.json`;
-                a.click();
+    const tx = db.transaction(storesList, 'readonly');
+    storesList.forEach(sName => {
+        backupData[sName] = [];
+        tx.objectStore(sName).getAll().onsuccess = (e) => {
+            backupData[sName] = e.target.result;
+            counter++;
+            if(counter === storesList.length) {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `CLOTVERS_BACKUP_SYSTEM_v1.0_${getFilterRange()}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
             }
         };
     });
 }
 
-function importFullSystemBackup(input) {
-    const file = input.files[0];
+function restoreDatabaseJSON(e) {
+    const file = e.target.files[0];
     if(!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = (event) => {
         try {
-            const data = JSON.parse(e.target.result);
-            const stores = ["store_produk", "store_hpp", "store_transaksi", "store_jurnal_akuntansi", "store_retur_reject"];
-            const tx = db.transaction(stores, "readwrite");
+            const parsedData = JSON.parse(event.target.result);
+            const storesList = ['store_produk', 'store_hpp', 'store_transaksi', 'store_jurnal_akuntansi', 'store_retur_reject'];
             
-            stores.forEach(name => {
-                if(data[name] && Array.isArray(data[name])) {
-                    const store = tx.objectStore(name);
-                    store.clear();
-                    data[name].forEach(record => store.put(record));
+            const tx = db.transaction(storesList, 'readwrite');
+            storesList.forEach(sName => {
+                if(parsedData[sName]) {
+                    const store = tx.objectStore(sName);
+                    store.clear(); // Bersihkan database usang untuk mencegah tabrakan data primary key auto-increment
+                    parsedData[sName].forEach(item => {
+                        store.put(item);
+                    });
                 }
             });
-            tx.oncomplete = () => { alert("Sinkronisasi Ekosistem Berhasil Terpasang!"); refreshAllDashboardsData(); };
-        } catch(err) { alert("File JSON tidak valid atau rusak."); }
+
+            tx.oncomplete = () => {
+                alert("Sinkronisasi Sukses! Seluruh basis data Clotvers System berhasil dimigrasikan ke perangkat ini.");
+                refreshAllTablesAndDropdowns();
+            };
+        } catch(err) {
+            alert("Format berkas sinkronisasi JSON rusak atau tidak valid.");
+        }
     };
     reader.readAsText(file);
 }
 
-// --- PDF & EXCEL REVENUE EXKURSION SYSTEMS ---
-function downloadStokMasterPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text("CLOTHVERSH SYSTEM - MASTER INVENTORY REPORT", 14, 15);
-    
-    let rows = [];
-    db.transaction(["store_produk"], "readonly").objectStore("store_produk").openCursor().onsuccess = function(e) {
-        const cursor = e.target.result;
-        if(cursor) {
-            const v = cursor.value;
-            v.matriks_varian.forEach(mv => {
-                rows.push([v.nama_model, v.jenis_kain, mv.warna, mv.size, mv.stok, `Rp ${mv.hpp_varian}`, `Rp ${mv.jual_varian}`]);
-            });
-            cursor.continue();
-        } else {
-            doc.autoTable({ head: [['Model', 'Bahan', 'Warna', 'Size', 'Stok', 'HPP', 'Jual']], body: rows, startY: 22 });
-            doc.save("Master_Inventory.pdf");
-        }
+// Global Delete Record Master Controller Function
+function hapusRecord(storeName, id) {
+    if(!confirm("Apakah anda yakin ingin menghapus dokumen arsip permanen ini?")) return;
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(id);
+    tx.oncomplete = () => {
+        refreshAllTablesAndDropdowns();
     };
 }
 
-function downloadAccountingReportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const pTime = getPeriodeFilterGlobal();
-    doc.text(`CLOTHVERSH JURNAL FINANCIAL REPORT (${pTime.bulan}/${pTime.tahun})`, 14, 15);
-
-    let rows = [];
-    db.transaction(["store_jurnal_akuntansi"], "readonly").objectStore("store_jurnal_akuntansi").openCursor().onsuccess = function(e) {
+// ==========================================
+// H. LOGIKA UTILITAS EKSPOR LAPORAN (PDF & CSV)
+// ==========================================
+function eksporCSVExcelPenjualan() {
+    let csvContent = "data:text/csv;charset=utf-8,Tanggal,Nama Model,Warna,Size,QTY,Platform,Grand Total\n";
+    const tx = db.transaction('store_transaksi', 'readonly');
+    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
         const cursor = e.target.result;
         if(cursor) {
-            const v = cursor.value;
-            if(v.bulan === pTime.bulan && v.tahun === pTime.tahun) {
-                rows.push([v.tanggal, v.tipe_jurnal, v.klasifikasi_akun, v.keterangan_memo, `Rp ${v.nominal.toLocaleString()}`]);
-            }
-            cursor.continue();
-        } else {
-            doc.autoTable({ head: [['Tanggal', 'Tipe', 'Klasifikasi', 'Memo', 'Nominal']], body: rows, startY: 22 });
-            doc.save(`Laporan_Keuangan_${pTime.bulan}_${pTime.tahun}.pdf`);
-        }
-    };
-}
-
-function downloadPOSLogPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text("CLOTHVERSH SYSTEM - DAILY POS TRANS LOGS", 14, 15);
-    let rows = [];
-    db.transaction(["store_transaksi"], "readonly").objectStore("store_transaksi").openCursor().onsuccess = function(e) {
-        const cursor = e.target.result;
-        if(cursor) {
-            const v = cursor.value;
-            rows.push([v.tanggal_order, `#CVS-${v.id_transaksi}`, v.nama_produk, `${v.varian_warna}/${v.varian_size}`, v.qty, `Rp ${v.grand_total.toLocaleString()}`]);
-            cursor.continue();
-        } else {
-            doc.autoTable({ head: [['Tanggal', 'ID Transaksi', 'Model', 'Varian', 'Qty', 'Total']], body: rows, startY: 22 });
-            doc.save("POS_Harian_Log.pdf");
-        }
-    };
-}
-
-function exportAnalyticsCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,Tanggal,Model,Warna,Size,Qty,Platform,Total Omset\n";
-    const pTime = getPeriodeFilterGlobal();
-
-    db.transaction(["store_transaksi"], "readonly").objectStore("store_transaksi").openCursor().onsuccess = function(e) {
-        const cursor = e.target.result;
-        if(cursor) {
-            const v = cursor.value;
-            if(v.bulan === pTime.bulan && v.tahun === pTime.tahun) {
-                csvContent += `${v.tanggal_order},${v.nama_produk},${v.varian_warna},${v.varian_size},${v.qty},${v.platform_order},${v.grand_total}\n`;
+            const t = cursor.value;
+            if(matchFilterDate(t.tanggal_order)) {
+                csvContent += `${t.tanggal_order},${t.nama_model},${t.varian_warna},${t.varian_size},${t.qty},${t.platform_order},${t.grand_total}\n`;
             }
             cursor.continue();
         } else {
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Analisis_Produk_${pTime.bulan}_${pTime.tahun}.csv`);
+            link.setAttribute("download", `Rekap_Penjualan_Clotvers_${getFilterRange()}.csv`);
+            document.body.appendChild(link);
             link.click();
+            link.remove();
+        }
+    };
+}
+
+function downloadPDFSkemaHPP(id) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const tx = db.transaction('store_hpp', 'readonly');
+    tx.objectStore('store_hpp').get(id).onsuccess = (e) => {
+        const h = e.target.result;
+        doc.setFont("helvetica", "bold");
+        doc.text("CLOTVERS SYSTEM v1.0 - LEMBAR KALKULASI HPP", 14, 20);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Model Artikel: ${h.nama_model}`, 14, 28);
+        doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString()}`, 14, 34);
+        
+        const headers = [["Komponen Biaya", "Nominal Satuan (Rp)"]];
+        const data = [
+            ["Biaya Kain Utama", `Rp ${h.biaya_kain.toLocaleString()}`],
+            ["Ongkos CMT / Jahit", `Rp ${h.ongkos_jahit.toLocaleString()}`],
+            ["Aplikasi Sablon / Bordir", `Rp ${h.aplikasi_sablon.toLocaleString()}`],
+            ["Packaging & Aksesoris", `Rp ${h.packaging.toLocaleString()}`],
+            ["TOTAL NET HPP PRODUCTION", `Rp ${h.hpp_total.toLocaleString()}`],
+            ["Target Margin Bersih", `${h.margin_percent}%`],
+            ["Rekomendasi Jual Bersih", `Rp ${(h.hpp_total + (h.hpp_total*(h.margin_percent/100))).toLocaleString()}`]
+        ];
+        
+        doc.autoTable({ startY: 40, head: headers, body: data, theme: 'grid' });
+        doc.save(`Skema_HPP_Clotvers_${h.nama_model.replace(/\s+/g, '_')}.pdf`);
+    };
+}
+
+function downloadLaporanPOSHarian() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text(`CLOTVERS v1.0 - LAPORAN KASIR POS PERIODE ${getFilterRange()}`, 14, 20);
+    
+    let tableData = [];
+    const tx = db.transaction('store_transaksi', 'readonly');
+    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if(cursor) {
+            const t = cursor.value;
+            if(matchFilterDate(t.tanggal_order)) {
+                tableData.push([t.tanggal_order, `${t.nama_model} (${t.varian_warna}-${t.varian_size})`, t.qty, t.platform_order, `Rp ${t.grand_total.toLocaleString()}`, t.status_bayar]);
+            }
+            cursor.continue();
+        } else {
+            doc.autoTable({
+                startY: 28,
+                head: [['Tanggal', 'Item Varian', 'QTY', 'Platform', 'Grand Total', 'Status']],
+                body: tableData
+            });
+            doc.save(`Laporan_Kasir_POS_Clotvers_${getFilterRange()}.pdf`);
+        }
+    };
+}
+
+function downloadPDFAnalisis() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text(`CLOTVERS v1.0 - LAPORAN ANALISIS QUANTITATIVE PERIODE ${getFilterRange()}`, 14, 20);
+    
+    let tableData = [];
+    const tx = db.transaction('store_transaksi', 'readonly');
+    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if(cursor) {
+            const t = cursor.value;
+            if(matchFilterDate(t.tanggal_order)) {
+                tableData.push([t.tanggal_order, t.nama_model, `${t.varian_warna} - ${t.varian_size}`, t.qty, t.platform_order, `Rp ${t.grand_total.toLocaleString()}`]);
+            }
+            cursor.continue();
+        } else {
+            doc.autoTable({
+                startY: 28,
+                head: [['Tanggal', 'Model', 'Varian/Size', 'QTY', 'Platform', 'Omset']],
+                body: tableData
+            });
+            doc.save(`Analisis_Kuantitatif_Clotvers_${getFilterRange()}.pdf`);
+        }
+    };
+}
+
+function downloadPDFRetur() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text(`CLOTVERS v1.0 - LAPORAN RETUR & BARANG CACAT ${getFilterRange()}`, 14, 20);
+    
+    let tableData = [];
+    const tx = db.transaction('store_retur_reject', 'readonly');
+    tx.objectStore('store_retur_reject').openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if(cursor) {
+            const r = cursor.value;
+            if(matchFilterDate(r.tanggal)) {
+                tableData.push([r.tanggal, r.jenis, `${r.nama_model} (${r.size})`, r.qty, `Rp ${r.nominal_rugi.toLocaleString()}`, r.keterangan]);
+            }
+            cursor.continue();
+        } else {
+            doc.autoTable({
+                startY: 28,
+                head: [['Tanggal', 'Jenis Klaim', 'Item', 'QTY', 'Kerugian', 'Memo']],
+                body: tableData
+            });
+            doc.save(`Laporan_Retur_Reject_Clotvers_${getFilterRange()}.pdf`);
+        }
+    };
+}
+
+function downloadPDFKeuangan(subType) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text(`CLOTVERS v1.0 - JURNAL ARUS AKUNTANSI [${subType.toUpperCase()}] ${getFilterRange()}`, 14, 20);
+    
+    let tableData = [];
+    const tx = db.transaction('store_jurnal_akuntansi', 'readonly');
+    tx.objectStore('store_jurnal_akuntansi').openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if(cursor) {
+            const j = cursor.value;
+            if(matchFilterDate(j.tanggal)) {
+                if(subType === 'omset' && j.tipe_jurnal === 'Pemasukan POS') {
+                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
+                } else if(subType === 'pengeluaran' && j.tipe_jurnal === 'Pengeluaran') {
+                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
+                } else if(subType === 'pemasukan' && j.tipe_jurnal === 'Pemasukan Lain') {
+                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
+                }
+            }
+            cursor.continue();
+        } else {
+            doc.autoTable({
+                startY: 28,
+                head: [['Tanggal', 'Klasifikasi Akun', 'Keterangan Memo', 'Nominal']],
+                body: tableData
+            });
+            doc.save(`Jurnal_Akuntansi_${subType}_Clotvers_${getFilterRange()}.pdf`);
         }
     };
 }
