@@ -3,585 +3,566 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clothvers System v1.0 - ERP Serverless Financials</title>
+    <title>Clothvers System v1.0 - ERP Single-Page</title>
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* Anti-Bug Layout & Smooth Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
 </head>
-<body class="bg-white text-[#1E293B] font-sans antialiased flex h-screen overflow-hidden">
+<body class="bg-[#FFFFFF] text-[#0F172A] font-sans antialiased flex min-h-screen overflow-hidden">
 
-    <aside class="w-64 bg-[#f5f5f7] border-r border-gray-200 flex flex-col justify-between shrink-0">
-        <div class="p-5 overflow-y-auto flex-1 space-y-6">
-            <div class="flex items-center space-x-3 px-2">
-                <div class="w-9 h-9 bg-[#1E293B] rounded-xl flex items-center justify-center text-white font-black text-xl shadow-sm">C</div>
-                <div>
-                    <h1 class="text-lg font-bold text-[#0F172A] tracking-tight leading-none">Clothvers</h1>
-                    <span class="text-[10px] text-[#396399] font-mono font-bold tracking-widest uppercase">System v1.0</span>
-                </div>
-            </div>
+    <aside class="hidden lg:flex flex-col w-64 bg-[#f5f5f7] border-r border-gray-200 h-screen sticky top-0 justify-between select-none">
+        <div class="p-6">
+            <h1 class="text-xl font-bold text-[#1E293B] tracking-tight">Clothvers System</h1>
+            <p class="text-xs text-gray-500 font-medium mt-0.5">ERP Single-Page v1.0</p>
             
-            <nav class="space-y-1" id="main-sidebar-nav">
-                <button onclick="switchModule('stok')" id="btn-nav-stok" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl bg-[#1E293B] text-white transition-all duration-200">
-                    <span>📦 Master Stok Pakaian</span>
-                </button>
-                <button onclick="switchModule('hpp')" id="btn-nav-hpp" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>📊 Manajemen HPP</span>
-                </button>
-                <button onclick="switchModule('pos')" id="btn-nav-pos" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>🛒 Terminal POS Kasir</span>
-                </button>
-                <button onclick="switchModule('retur')" id="btn-nav-retur" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>🔄 Retur & Barang Cacat</span>
-                </button>
-                <button onclick="switchModule('inventaris')" id="btn-nav-inventaris" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>🔧 Inventaris Alat Kerja</span>
-                </button>
-                <button onclick="switchModule('keuangan')" id="btn-nav-keuangan" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>💵 Akuntansi & Keuangan</span>
-                </button>
-                <button onclick="switchModule('sync')" id="btn-nav-sync" class="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl text-[#1E293B] hover:bg-gray-200/70 transition-all duration-200">
-                    <span>🔀 Backup & Sync Bridge</span>
-                </button>
+            <nav class="mt-8 space-y-1.5">
+                <button onclick="switchModule('dashboard-stok')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#396399] text-white transition-all text-left">📦 Master Stok</button>
+                <button onclick="switchModule('dashboard-hpp')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">📊 Manajemen HPP</button>
+                <button onclick="switchModule('dashboard-pos')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">🛒 Terminal POS Kasir</button>
+                <button onclick="switchModule('dashboard-retur')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">🔄 Retur & Cacat</button>
+                <button onclick="switchModule('dashboard-inventaris')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">🔧 Inventaris Alat</button>
+                <button onclick="switchModule('dashboard-keuangan')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">💵 Buku Akuntansi</button>
+                <button onclick="switchModule('dashboard-sync')" class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[#1E293B] hover:bg-gray-200 transition-all text-left">⚙️ Cloud Sync Bridge</button>
             </nav>
         </div>
-        
-        <div class="p-4 border-t border-gray-200 bg-white/50 text-center">
-            <p class="text-[11px] font-mono font-bold text-[#1E293B]/60 tracking-wider">Made in by Clothvers x Elevatio</p>
+        <div class="p-4 border-t border-gray-200 text-center">
+            <p class="text-[11px] text-gray-400 font-medium">Made in by Clothvers x Elevatio</p>
         </div>
     </aside>
 
-    <main class="flex-1 overflow-y-auto h-screen pb-24 bg-white relative">
+    <div id="tablet-drawer" class="hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" onclick="toggleDrawer()">
+        <div class="w-64 bg-[#f5f5f7] h-full p-6 flex flex-col justify-between" onclick="event.stopPropagation()">
+            <div>
+                <h1 class="text-xl font-bold text-[#1E293B]">Clothvers System</h1>
+                <p class="text-xs text-gray-500">ERP Single-Page v1.0</p>
+                <nav class="mt-6 space-y-2">
+                    <button onclick="switchModule('dashboard-stok'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">📦 Master Stok</button>
+                    <button onclick="switchModule('dashboard-hpp'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">📊 Manajemen HPP</button>
+                    <button onclick="switchModule('dashboard-pos'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">🛒 Terminal POS Kasir</button>
+                    <button onclick="switchModule('dashboard-retur'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">🔄 Retur & Cacat</button>
+                    <button onclick="switchModule('dashboard-inventaris'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">🔧 Inventaris Alat</button>
+                    <button onclick="switchModule('dashboard-keuangan'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">💵 Buku Akuntansi</button>
+                    <button onclick="switchModule('dashboard-sync'); toggleDrawer()" class="w-full text-left px-4 py-2 text-sm font-semibold rounded-md hover:bg-gray-200">⚙️ Cloud Sync Bridge</button>
+                </nav>
+            </div>
+            <p class="text-center text-[11px] text-gray-400">Made in by Clothvers x Elevatio</p>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col min-w-0 w-full h-screen relative">
         
-        <header class="sticky top-0 bg-white/95 backdrop-blur px-8 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 z-40 shadow-xs">
-            <h2 id="module-display-title" class="text-xl font-black text-[#0F172A] tracking-tight">Master Stok Pakaian</h2>
+        <header class="h-16 border-b border-gray-200 bg-white px-4 lg:px-8 flex items-center justify-between z-30 shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleDrawer()" class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="Menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <h2 id="current-module-title" class="text-base lg:text-lg font-bold text-[#0F172A]">📦 Master Data Stok Pakaian</h2>
+            </div>
             
-            <div class="flex items-center space-x-2 bg-[#f5f5f7] p-1.5 rounded-xl border border-gray-200">
-                <span class="text-[10px] font-black text-[#1E293B]/70 px-2 uppercase tracking-wider">Periode Global Filter:</span>
-                <select id="global-filter-bulan" class="bg-white text-xs font-bold rounded-lg px-3 py-1.5 border border-gray-200 text-[#0F172A] outline-none shadow-2xs focus:border-[#1E293B]">
-                    <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                    <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                    <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                </select>
-                <select id="global-filter-tahun" class="bg-white text-xs font-bold rounded-lg px-3 py-1.5 border border-gray-200 text-[#0F172A] outline-none shadow-2xs focus:border-[#1E293B]">
-                    <option value="2026">2026</option><option value="2027">2027</option>
-                    <option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option>
+            <div class="flex items-center gap-2">
+                <label for="global-filter-periode" class="hidden sm:inline text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode:</label>
+                <select id="global-filter-periode" onchange="triggerGlobalFilter()" class="text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-1.5 font-semibold text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#396399]">
+                    <option value="2026-01">Januari 2026</option>
+                    <option value="2026-02">Februari 2026</option>
+                    <option value="2026-03">Maret 2026</option>
+                    <option value="2026-04">April 2026</option>
+                    <option value="2026-05">Mei 2026</option>
+                    <option value="2026-06">Juni 2026</option>
+                    <option value="2026-07">Juli 2026</option>
+                    <option value="2026-08">Agustus 2026</option>
+                    <option value="2026-09">September 2026</option>
+                    <option value="2026-10">Oktober 2026</option>
+                    <option value="2026-11">November 2026</option>
+                    <option value="2026-12">Desember 2026</option>
                 </select>
             </div>
         </header>
 
-        <div class="p-8 space-y-8 max-w-[1700px] mx-auto">
-
-            <section id="modul-stok" class="modul-viewspace space-y-6">
-                <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6">
-                    <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Form Registrasi Master Model & Spesifikasi</h3>
-                    <form id="form-master-stok" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input type="hidden" id="input-stok-id-modifier">
+        <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8 pb-24 lg:pb-8 space-y-8">
+            
+            <section id="module-dashboard-stok" class="app-module space-y-6">
+                <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm">
+                    <h3 class="text-md font-bold text-[#1E293B] mb-4">Input Formulir Master Produksi & Varian</h3>
+                    <form id="form-stok" onsubmit="saveStokData(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="hidden" id="stok-edit-id">
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Nama Model Baju</label>
-                            <input type="text" id="stok-nama-model" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-medium placeholder-gray-400 focus:outline-[#1E293B]" placeholder="Contoh: Heavy Oversize Hoodie" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nama Model Pakaian</label>
+                            <input type="text" id="stok-nama-model" required placeholder="Contoh: Coach Jacket Classic v1" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Jenis Material Kain</label>
-                            <input type="text" id="stok-jenis-kain" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-medium placeholder-gray-400 focus:outline-[#1E293B]" placeholder="Contoh: Cotton Fleece" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Jenis Kain Utama</label>
+                            <input type="text" id="stok-jenis-kain" required placeholder="Contoh: Heavy Cotton" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Ketebalan Kain (GSM)</label>
-                            <input type="text" id="stok-tipe-gsm" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-medium placeholder-gray-400 focus:outline-[#1E293B]" placeholder="Contoh: 330 GSM" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Spesifikasi Kain Tipe GSM</label>
+                            <input type="text" id="stok-tipe-gsm" required placeholder="Contoh: 330 GSM combed" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Detail Penyesuaian Produksi</label>
-                            <input type="text" id="stok-detail-produksi" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-medium placeholder-gray-400 focus:outline-[#1E293B]" placeholder="Contoh: Double Stitching Drop Shoulder">
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Detail Intrik Kustomisasi Produksi</label>
+                            <textarea id="stok-detail-produksi" rows="2" placeholder="Detail pola jahit bordir, layout kantong, kancing snap kustom..." class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]"></textarea>
                         </div>
                         
-                        <div class="md:col-span-4 mt-2 bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                            <h4 class="text-xs font-black text-[#1E293B] uppercase tracking-wider mb-3">Matriks Varian Fisik & Komersial Per Tingkat Ukuran</h4>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse min-w-[1000px]">
-                                    <thead>
-                                        <tr class="border-b border-gray-200 text-[11px] font-black text-gray-500 uppercase tracking-wider">
-                                            <th class="pb-2">Size</th>
-                                            <th class="pb-2">Pilihan Warna</th>
-                                            <th class="pb-2">Jumlah Stok</th>
-                                            <th class="pb-2">HPP Varian Asli (Rp)</th>
-                                            <th class="pb-2">Harga Jual POS (Rp)</th>
-                                            <th class="pb-2">Width (WH)</th>
-                                            <th class="pb-2">Height (HT)</th>
-                                            <th class="pb-2">TB & BB Rec.</th>
+                        <div class="md:col-span-3 border-t border-gray-200 pt-4 mt-2">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-[#396399] mb-3">Matriks Varian Size Chart & Komponen Finansial</h4>
+                            <div class="overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg bg-white">
+                                <table class="w-full text-left text-xs min-w-[900px]">
+                                    <thead class="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase">
+                                        <tr>
+                                            <th class="p-3 w-20">Size</th>
+                                            <th class="p-3 w-32">Warna Varian</th>
+                                            <th class="p-3">Stok Awal</th>
+                                            <th class="p-3">HPP Varian (Rp)</th>
+                                            <th class="p-3">Harga Jual (Rp)</th>
+                                            <th class="p-3">WH (cm)</th>
+                                            <th class="p-3">HT (cm)</th>
+                                            <th class="p-3">TB Rec (cm)</th>
+                                            <th class="p-3">BB Rec (kg)</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="size-matrix-tbody" class="divide-y divide-gray-100">
+                                    <tbody id="stok-matrix-body" class="divide-y divide-gray-100">
                                         </tbody>
                                 </table>
                             </div>
                         </div>
-
-                        <div class="md:col-span-4 flex justify-end space-x-2 pt-2">
-                            <button type="button" onclick="clearFormStok()" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 shadow-2xs hover:bg-gray-50">Clear Grid</button>
-                            <button type="submit" class="px-6 py-2.5 bg-[#1E293B] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm hover:bg-[#0F172A]">Simpan Master Model</button>
+                        <div class="md:col-span-3 flex justify-end gap-2 pt-2">
+                            <button type="button" onclick="resetFormStok()" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-200 rounded-lg transition-all">Reset</button>
+                            <button type="submit" class="px-6 py-2 text-sm font-semibold bg-[#396399] text-white rounded-lg hover:bg-opacity-90 transition-all">Simpan Dokumen Master</button>
                         </div>
                     </form>
                 </div>
 
-                <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                        <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider">Data Master Real-Time Inventori Pakaian</h3>
-                        <button onclick="downloadPDFMassalMasterStok()" class="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-800 transition-colors">
-                            📥 Download PDF Semua Data Stok
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-[#f5f5f7] text-[#1E293B] text-xs font-black uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 rounded-l-xl">Karakteristik Produk</th>
-                                    <th class="p-4">Breakdown Matriks Varian Ukuran</th>
-                                    <th class="p-4">Akumulasi Kuantitas</th>
-                                    <th class="p-4 rounded-r-xl text-center">Aksi Manajemen</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-stok-tbody" class="text-xs font-medium divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h3 class="text-md font-bold text-[#0F172A]">Daftar Master Inventori Kain & Pakaian</h3>
+                    <button onclick="downloadPDFMassalStok()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                        📥 Download PDF Semua Data Stok
+                    </button>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-sm border-collapse min-w-[1000px]">
+                        <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                            <tr>
+                                <th class="p-4">Nama Model</th>
+                                <th class="p-4">Kain & Spesifikasi</th>
+                                <th class="p-4">Detail Produksi</th>
+                                <th class="p-4">Total Varian / Stok</th>
+                                <th class="p-4 text-center">Aksi Operasional</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-stok-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
                 </div>
             </section>
 
-            <section id="modul-hpp" class="modul-viewspace space-y-6 hidden">
-                <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6">
-                    <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Kalkulator Simulasi Margin Multi-Channel & HPP</h3>
-                    <form id="form-manajemen-hpp" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input type="hidden" id="input-hpp-id-modifier">
+            <section id="module-dashboard-hpp" class="app-module hidden space-y-6">
+                <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm">
+                    <h3 class="text-md font-bold text-[#1E293B] mb-4">Formulir Kalkulasi Skema Penetapan Harga & Margin</h3>
+                    <form id="form-hpp" onsubmit="saveHppData(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="hidden" id="hpp-edit-id">
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Model Pakaian</label>
-                            <select id="hpp-select-model" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-bold outline-none" onchange="executeLiveSyncBiayaKain()" required></select>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pilih Model Pakaian</label>
+                            <select id="hpp-select-model" onchange="syncHppFabricCost()" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]"></select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Ukuran/Size Target</label>
-                            <select id="hpp-select-size" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] font-bold outline-none" onchange="executeLiveSyncBiayaKain()" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pilih Ukuran / Size</label>
+                            <select id="hpp-select-size" onchange="syncHppFabricCost()" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                                 <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Biaya Kain Utama (Auto Lock Sync)</label>
-                            <input type="number" id="hpp-kain-auto-lock" class="w-full bg-gray-200/80 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono font-black text-[#396399]" readonly placeholder="Terikat Sistem Terotomatisasi">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Biaya Kain Utama (Live Sync)</label>
+                            <input type="number" id="hpp-biaya-kain" readonly class="w-full bg-gray-100 font-semibold border border-gray-200 rounded-lg p-2.5 text-sm text-[#396399] focus:outline-none cursor-not-allowed">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Ongkos Jahit Maklon CMT (Rp)</label>
-                            <input type="number" id="hpp-ongkos-jahit" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="0" min="0" oninput="calculateKalkulasiSkemaHPP()" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Ongkos Jahit CMT (Rp)</label>
+                            <input type="number" id="hpp-ongkos-jahit" required oninput="calculateHppTotal()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Biaya Aplikasi Sablon / Bordir (Rp)</label>
-                            <input type="number" id="hpp-aplikasi-sablon" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="0" min="0" oninput="calculateKalkulasiSkemaHPP()" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Aplikasi Sablon/Bordir (Rp)</label>
+                            <input type="number" id="hpp-aplikasi-sablon" required oninput="calculateHppTotal()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Biaya Packaging & Hangtag (Rp)</label>
-                            <input type="number" id="hpp-biaya-packaging" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="0" min="0" oninput="calculateKalkulasiSkemaHPP()" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Aksesoris & Packaging (Rp)</label>
+                            <input type="number" id="hpp-packaging" required oninput="calculateHppTotal()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Target Keuntungan Margin (%)</label>
-                            <input type="number" id="hpp-target-margin" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" value="50" min="1" max="99" oninput="calculateKalkulasiSkemaHPP()" required>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Target Margin Keuntungan (%)</label>
+                            <input type="number" id="hpp-margin-percent" required oninput="calculateHppTotal()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#396399]">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">HPP Total Hasil Akumulasi</label>
-                            <input type="number" id="hpp-total-akumulasi" class="w-full bg-gray-200/80 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono font-black text-rose-600" readonly>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">HPP Total Konveksi</label>
+                            <input type="text" id="hpp-total-display" readonly class="w-full bg-gray-50 font-bold border border-gray-200 rounded-lg p-2.5 text-sm text-red-600 focus:outline-none">
                         </div>
-                        
-                        <div class="md:col-span-4 bg-white p-5 rounded-xl border border-gray-200 mt-2 space-y-4 shadow-2xs">
-                            <h4 class="text-xs font-black text-[#0F172A] uppercase tracking-wider">Variabel Potongan Biaya Admin Finansial Marketplace & Ekosistem</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">WhatsApp/Direct (%)</label>
-                                    <input type="number" id="fee-admin-wa" class="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold" value="0" oninput="calculateKalkulasiSkemaHPP()">
-                                    <span id="price-target-wa" class="text-xs font-black text-[#1E293B] block mt-1">Rp 0</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">Shopee Admin (%)</label>
-                                    <input type="number" id="fee-admin-shopee" class="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold" value="10" oninput="calculateKalkulasiSkemaHPP()">
-                                    <span id="price-target-shopee" class="text-xs font-black text-orange-600 block mt-1">Rp 0</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">TikTok Shop Admin (%)</label>
-                                    <input type="number" id="fee-admin-tiktok" class="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold" value="9" oninput="calculateKalkulasiSkemaHPP()">
-                                    <span id="price-target-tiktok" class="text-xs font-black text-pink-600 block mt-1">Rp 0</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">Reseller Margin (%)</label>
-                                    <input type="number" id="fee-admin-reseller" class="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold" value="15" oninput="calculateKalkulasiSkemaHPP()">
-                                    <span id="price-target-reseller" class="text-xs font-black text-blue-600 block mt-1">Rp 0</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">Grosir Volume (%)</label>
-                                    <input type="number" id="fee-admin-grosir" class="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold" value="25" oninput="calculateKalkulasiSkemaHPP()">
-                                    <span id="price-target-grosir" class="text-xs font-black text-purple-600 block mt-1">Rp 0</span>
-                                </div>
+                        <div class="md:col-span-4 border-t border-gray-200 pt-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-600 mb-2">Simulasi Penetapan Harga Jual Multi-Channel Efektif Marketplace</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                                <div class="bg-white p-2 rounded-lg border border-gray-200"><span class="font-semibold text-gray-500 block mb-1">WhatsApp/Offline (0%):</span><span id="price-wa" class="font-bold text-gray-800 text-sm">Rp 0</span></div>
+                                <div class="bg-white p-2 rounded-lg border border-gray-200"><span class="font-semibold text-gray-500 block mb-1">Shopee (6%):</span><span id="price-shopee" class="font-bold text-gray-800 text-sm">Rp 0</span></div>
+                                <div class="bg-white p-2 rounded-lg border border-gray-200"><span class="font-semibold text-gray-500 block mb-1">TikTok Shop (8.5%):</span><span id="price-tiktok" class="font-bold text-gray-800 text-sm">Rp 0</span></div>
+                                <div class="bg-white p-2 rounded-lg border border-gray-200"><span class="font-semibold text-gray-500 block mb-1">Kemitraan Reseller (15% Disc):</span><span id="price-reseller" class="font-bold text-gray-800 text-sm">Rp 0</span></div>
+                                <div class="bg-white p-2 rounded-lg border border-gray-200"><span class="font-semibold text-gray-500 block mb-1">Grosir Partai Besar (25% Disc):</span><span id="price-grosir" class="font-bold text-gray-800 text-sm">Rp 0</span></div>
                             </div>
                         </div>
-
-                        <div class="md:col-span-4 flex justify-end pt-2">
-                            <button type="submit" class="px-6 py-2.5 bg-[#1E293B] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm hover:bg-[#0F172A]">Simpan Kalkulasi Finansial</button>
+                        <div class="md:col-span-4 flex justify-end gap-2 pt-2">
+                            <button type="button" onclick="resetFormHpp()" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-200 rounded-lg transition-all">Reset</button>
+                            <button type="submit" class="px-6 py-2 text-sm font-semibold bg-[#396399] text-white rounded-lg hover:bg-opacity-90 transition-all">Kunci Skema Harga</button>
                         </div>
                     </form>
                 </div>
 
-                <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                        <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider">Log Riwayat Analisis & Rekap Skema HPP</h3>
-                        <button onclick="downloadPDFMassalManajemenHPP()" class="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-800 transition-colors">
-                            📥 Download PDF Semua Laporan HPP
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-[#f5f5f7] text-[#1E293B] text-xs font-black uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 rounded-l-xl">Model & Ukuran Terpilih</th>
-                                    <th class="p-4">Uraian Komposisi Pengeluaran</th>
-                                    <th class="p-4">Grand Total HPP</th>
-                                    <th class="p-4">Simulasi Harga Multi-Channel Platform</th>
-                                    <th class="p-4 rounded-r-xl text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-hpp-tbody" class="text-xs font-medium divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-pos" class="modul-viewspace space-y-6 hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-5 lg:col-span-1 space-y-4">
-                        <h3 class="text-xs font-black text-[#0F172A] uppercase tracking-wider">Mesin Transaksi POS Kasir</h3>
-                        <form id="form-terminal-pos" class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Model Pakaian</label>
-                                <select id="pos-select-model" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" onchange="executeFetchHargaDinamisPOSSize()" required></select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Ukuran/Size</label>
-                                <select id="pos-select-size" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" onchange="executeFetchHargaDinamisPOSSize()" required>
-                                    <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Harga Jual Fisik Terkunci (Rp)</label>
-                                <input type="number" id="pos-harga-terkunci" class="w-full bg-gray-200/80 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono font-black text-[#1E293B]" readonly>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Kuantitas Jual (Qty)</label>
-                                <input type="number" id="pos-input-qty" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" value="1" min="1" oninput="calculateKalkulasiKasirBelanjaPOS()" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Platform Alur Pembelian</label>
-                                <select id="pos-select-channel" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" required>
-                                    <option value="WhatsApp">WhatsApp</option>
-                                    <option value="Shopee">Shopee</option>
-                                    <option value="TikTok">TikTok</option>
-                                    <option value="Reseller">Reseller</option>
-                                    <option value="Grosir">Grosir</option>
-                                </select>
-                            </div>
-                            
-                            <div class="border-t border-gray-200 pt-3 space-y-2">
-                                <div class="flex justify-between items-center text-xs font-black text-gray-500">
-                                    <span>SUBTOTAL TRANSAKSI:</span>
-                                    <span id="pos-text-subtotal" class="text-base text-[#0F172A]">Rp 0</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-500 mb-1">Nominal DP / Uang Muka Masuk (Rp)</label>
-                                    <input type="number" id="pos-input-dp" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-emerald-600" value="0" min="0" oninput="calculateKalkulasiKasirBelanjaPOS()">
-                                </div>
-                                <div class="bg-white p-3 rounded-lg border border-gray-100 flex justify-between items-center text-[11px] font-mono font-black">
-                                    <span class="text-gray-400">SISA TAGIHAN / PIUTANG:</span>
-                                    <span id="pos-text-sisa" class="text-rose-600">Rp 0</span>
-                                </div>
-                            </div>
-                            
-                            <button type="submit" class="w-full py-3 bg-[#1E293B] text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-[#0F172A] shadow-md transition-all">
-                                ⚡ Amankan & Eksekusi Nota POS
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-                            <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Matriks Analisis Omset Finansial Berdasarkan Saluran Jual</h4>
-                            <div class="h-44 relative">
-                                <canvas id="chartFinansialPlatformPOS"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                            <h3 class="text-xs font-black text-[#0F172A] uppercase tracking-wider mb-2">Riwayat Log Transaksi Kasir 24 Jam</h3>
-                            <div class="overflow-x-auto max-h-56 overflow-y-auto">
-                                <table class="w-full text-left border-collapse text-[11px]">
-                                    <thead>
-                                        <tr class="bg-[#f5f5f7] font-black text-[#1E293B] uppercase border-b border-gray-200">
-                                            <th class="p-3">Tanggal</th>
-                                            <th class="p-3">Item Deskripsi</th>
-                                            <th class="p-3">Platform</th>
-                                            <th class="p-3">Total Belanja (DP)</th>
-                                            <th class="p-3">Sisa Piutang</th>
-                                            <th class="p-3 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-pos-tbody" class="divide-y divide-gray-100 font-bold"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <section id="modul-retur" class="modul-viewspace space-y-6 hidden">
-                <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6">
-                    <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Sistem Dokumentasi Kasus Retur Size & Cacat Produksi</h3>
-                    <form id="form-kasus-retur" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input type="hidden" id="input-retur-id-modifier">
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Model Pakaian</label>
-                            <select id="retur-select-model" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" required></select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Pilih Ukuran/Size</label>
-                            <select id="retur-select-size" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" required>
-                                <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Klasifikasi Kerusakan / Kasus</label>
-                            <select id="retur-select-jenis" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" required>
-                                <option value="Tukar Size Pelanggan">Tukar Size Pelanggan</option>
-                                <option value="Cacat Produksi Konveksi (Reject)">Cacat Produksi Konveksi (Reject)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Volume Kuantitas (Qty)</label>
-                            <input type="number" id="retur-input-qty" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="1" min="1" required>
-                        </div>
-                        <div class="md:col-span-3">
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Keterangan / Kronologi Kerusakan Fisik</label>
-                            <input type="text" id="retur-input-kronologi" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" placeholder="Contoh: Kerusakan zipper lepas pada kantong saku kanan" required>
-                        </div>
-                        <div class="md:col-span-1 flex items-end">
-                            <button type="submit" class="w-full py-2.5 bg-rose-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-sm hover:bg-rose-800 transition-colors">
-                                🚨 Log Data Kerusakan
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
-                    <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Log Riwayat Klaim Masalah Retur & Barang Reject</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-[#f5f5f7] text-[#1E293B] text-xs font-black uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 rounded-l-xl">Tanggal Input</th>
-                                    <th class="p-4">Deskripsi Produk & Ukuran</th>
-                                    <th class="p-4">Klasifikasi Kasus</th>
-                                    <th class="p-4">Qty</th>
-                                    <th class="p-4">Kronologi Catatan</th>
-                                    <th class="p-4 rounded-r-xl text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-retur-tbody" class="text-xs font-medium divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-inventaris" class="modul-viewspace space-y-6 hidden">
-                <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6">
-                    <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Formulir Pencatatan Aset Alat Kerja & Penyusutan Operasional</h3>
-                    <form id="form-inventaris-aset" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input type="hidden" id="input-inv-id-modifier">
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Tanggal Pembelian Aset</label>
-                            <input type="date" id="inv-input-tanggal" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Nama Alat / Nama Aset</label>
-                            <input type="text" id="inv-input-nama" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" placeholder="Contoh: Mesin Potong Kain Otomatis Juki" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Kategori Aset / Klasifikasi</label>
-                            <select id="inv-input-kategori" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" required>
-                                <option value="Mesin Produksi">Mesin Produksi</option>
-                                <option value="Peralatan Toko">Peralatan Toko</option>
-                                <option value="Elektronik & POS">Elektronik & POS</option>
-                                <option value="Aset Kantor">Aset Kantor</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Kuantitas Fisik (Qty)</label>
-                            <input type="number" id="inv-input-qty" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="1" min="1" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Harga Satuan Aset (Rp)</label>
-                            <input type="number" id="inv-input-harga" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" placeholder="Rp" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-[#1E293B] mb-1">Estimasi Masa Habis Pakai (Bulan / Penyusutan)</label>
-                            <input type="number" id="inv-input-susut" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" value="36" min="1" required>
-                        </div>
-                        
-                        <div class="md:col-span-3 flex justify-end space-x-2 pt-2">
-                            <button type="button" onclick="clearFormInventaris()" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-500 shadow-2xs">Reset Aset</button>
-                            <button type="submit" class="px-6 py-2.5 bg-[#1E293B] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm hover:bg-[#0F172A]">🔧 Amankan Data Aset</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                        <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider">Log Neraca Inventaris & Nilai Buku Alat Kerja</h3>
-                        <button onclick="downloadPDFMassalInventarisAset()" class="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-800 transition-colors">
-                            📥 Download PDF Semua Data Inventaris
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-[#f5f5f7] text-[#1E293B] text-xs font-black uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 rounded-l-xl">Tanggal Pembelian</th>
-                                    <th class="p-4">Nama Alat & Klasifikasi Kategori</th>
-                                    <th class="p-4">Kombinasi Kuantitas x Satuan</th>
-                                    <th class="p-4">Total Nilai Kapitalisasi</th>
-                                    <th class="p-4">Alokasi Penyusutan / Bulan</th>
-                                    <th class="p-4 rounded-r-xl text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-inventaris-tbody" class="text-xs font-medium divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-keuangan" class="modul-viewspace space-y-6 hidden">
-                
-                <div class="flex space-x-1 border-b border-gray-200 pb-1">
-                    <button onclick="toggleSubDashboardKeuanganTabs('input-kas-manual')" id="tab-sub-input-kas" class="px-4 py-2.5 font-black text-xs uppercase tracking-wider rounded-lg bg-[#1E293B] text-white transition-all">
-                        ✍️ Log Aliran Kas Manual
-                    </button>
-                    <button onclick="toggleSubDashboardKeuanganTabs('buku-akumulasi-ledger')" id="tab-sub-buku-ledger" class="px-4 py-2.5 font-black text-xs uppercase tracking-wider rounded-lg text-gray-500 hover:bg-gray-100 transition-all">
-                        📖 Buku Laporan Akumulasi Jurnal (General Ledger)
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h3 class="text-md font-bold text-[#0F172A]">Log Matriks Analisis Skema HPP & Penjualan</h3>
+                    <button onclick="downloadPDFMassalHpp()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                        📥 Download PDF Semua Laporan HPP
                     </button>
                 </div>
 
-                <div id="subview-input-kas-manual" class="subview-keuangan-container space-y-6">
-                    <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6">
-                        <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider mb-4">Pencatatan Entri Jurnal Keuangan Manual</h3>
-                        <form id="form-jurnal-manual" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <input type="hidden" id="input-jurnal-id-modifier">
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Tanggal Transaksi Keuangan</label>
-                                <input type="date" id="jurnal-input-tanggal" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Klasifikasi Aliran Dana</label>
-                                <select id="jurnal-input-tipe" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold" required>
-                                    <option value="Uang Masuk / Modal">Uang Masuk / Modal (Debit)</option>
-                                    <option value="Pengeluaran Operasional">Pengeluaran Operasional (Kredit)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Nilai Nominal Dana (Rp)</label>
-                                <input type="number" id="jurnal-input-nominal" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono font-bold" placeholder="Rp" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-[#1E293B] mb-1">Keterangan Catatan Finansial</label>
-                                <input type="text" id="jurnal-input-keterangan" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm" placeholder="Contoh: Pembayaran Token Listrik Konveksi" required>
-                            </div>
-                            <div class="md:col-span-4 flex justify-end">
-                                <button type="submit" class="px-6 py-2.5 bg-[#1E293B] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm hover:bg-[#0F172A]">📂 Log Kas Jurnal Umum</button>
-                            </div>
-                        </form>
-                    </div>
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-sm border-collapse min-w-[1000px]">
+                        <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                            <tr>
+                                <th class="p-4">Model & Size</th>
+                                <th class="p-4">Komposisi Biaya Produksi</th>
+                                <th class="p-4">HPP Total</th>
+                                <th class="p-4">Matriks Harga Jual Multi-Channel</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-hpp-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
                 </div>
+            </section>
 
-                <div id="subview-buku-akumulasi-ledger" class="subview-keuangan-container space-y-6 hidden">
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-[#f5f5f7] border border-gray-200 p-5 rounded-2xl shadow-2xs">
-                            <span class="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-1">Total Debit Terakumulasi (Uang Masuk / Omset)</span>
-                            <span id="widget-ledger-debit" class="text-2xl font-black text-emerald-700 font-mono">Rp 0</span>
+            <section id="module-dashboard-pos" class="app-module hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm space-y-4">
+                        <h3 class="text-md font-bold text-[#1E293B]">Mesin Transaksi POS Kasir</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pilih Produk</label>
+                                <select id="pos-select-produk" onchange="updatePosSizeDropdown()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Ukuran (Dinamis)</label>
+                                <select id="pos-select-size" onchange="updatePosPriceDisplay()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Saluran Pembelian</label>
+                                <select id="pos-channel" onchange="updatePosPriceDisplay()" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                                    <option value="wa">WhatsApp / Offline</option>
+                                    <option value="shopee">Shopee</option>
+                                    <option value="tiktok">TikTok Shop</option>
+                                    <option value="reseller">Reseller</option>
+                                    <option value="grosir">Grosir</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="bg-[#f5f5f7] border border-gray-200 p-5 rounded-2xl shadow-2xs">
-                            <span class="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-1">Total Kredit Terakumulasi (Pengeluaran + Penyusutan)</span>
-                            <span id="widget-ledger-kredit" class="text-2xl font-black text-rose-700 font-mono">Rp 0</span>
-                        </div>
-                        <div class="bg-[#f5f5f7] border border-gray-200 p-5 rounded-2xl shadow-2xs">
-                            <span class="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-1">Posisi Laba / Rugi Bersih Komprehensif</span>
-                            <span id="widget-ledger-bersih" class="text-2xl font-black text-[#0F172A] font-mono">Rp 0</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                            <div class="sm:col-span-2 bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center">
+                                <span class="text-xs font-semibold text-gray-400">Harga Terpilih:</span>
+                                <span id="pos-price-tag" class="text-md font-bold text-[#396399]">Rp 0</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Beli</label>
+                                <input type="number" id="pos-qty" value="1" min="1" class="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                            </div>
+                            <button onclick="addToCartPos()" class="w-full bg-[#396399] text-white font-bold text-sm py-2.5 rounded-lg hover:bg-opacity-90 transition-all">+ Keranjang</button>
                         </div>
                     </div>
 
-                    <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
-                        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
-                            <div>
-                                <h3 class="text-sm font-black text-[#0F172A] uppercase tracking-wider">General Ledger - Buku Besar Kronologi Keuangan Terpadu</h3>
-                                <p class="text-xs text-gray-400">Sinkronisasi otomatis sistem dari: Penjualan POS, Jurnal Manual, Penyusutan Alat, Kas Reject.</p>
-                            </div>
-                            
-                            <div class="flex flex-wrap items-center gap-2">
-                                <select id="filter-rentang-waktu-ledger" class="bg-[#f5f5f7] text-xs font-bold border border-gray-200 rounded-xl p-2.5 outline-none" onchange="executeRenderBukuAkumulasiLedger()">
-                                    <option value="all">Semua Riwayat (Sesuai Bulan/Tahun Selected)</option>
-                                    <option value="hari">Hari Ini Berjalan</option>
-                                    <option value="minggu">1 Minggu Terakhir</option>
-                                </select>
-                                <button onclick="downloadPDFBukuAkumulasiFinansial()" class="px-3 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition-colors">
-                                    📄 PDF Buku Besar
-                                </button>
-                                <button onclick="downloadExcelCSVBukuAkumulasiFinansial()" class="px-3 py-2.5 bg-blue-700 text-white rounded-xl text-xs font-bold hover:bg-blue-800 transition-colors">
-                                    📊 Ekspor Excel (CSV)
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-[#f5f5f7] text-[#1E293B] font-black uppercase tracking-wider border-b border-gray-200">
-                                        <th class="p-4">Tanggal Ledger</th>
-                                        <th class="p-4">Asal Subsistem Modul</th>
-                                        <th class="p-4">Uraian Deskripsi Catatan Akuntansi</th>
-                                        <th class="p-4 text-emerald-700">Debit (Uang Masuk)</th>
-                                        <th class="p-4 text-rose-700">Kredit (Uang Keluar)</th>
-                                        <th class="p-4 text-center">Opsi Aksi</th>
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4 space-y-4">
+                        <h4 class="text-sm font-bold text-gray-700">Daftar Item Keranjang</h4>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left text-xs min-w-[500px]">
+                                <thead class="bg-gray-50 text-gray-500 font-bold uppercase border-b border-gray-200">
+                                    <tr>
+                                        <th class="p-3">Model & Ukuran</th>
+                                        <th class="p-3">Saluran</th>
+                                        <th class="p-3 text-right">Harga Satuan</th>
+                                        <th class="p-3 text-center">Qty</th>
+                                        <th class="p-3 text-right">Subtotal</th>
+                                        <th class="p-3 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="table-ledger-tbody" class="divide-y divide-gray-100 font-bold"></tbody>
+                                <tbody id="pos-cart-body" class="divide-y divide-gray-100">
+                                    <tr><td colspan="6" class="p-4 text-center text-gray-400 italic">Keranjang kosong.</td></tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
-
                 </div>
-            </section>
 
-            <section id="modul-sync" class="modul-viewspace space-y-6 hidden">
-                <div class="bg-[#f5f5f7] border border-gray-200 p-8 rounded-2xl text-center space-y-4 max-w-xl mx-auto shadow-2xs">
-                    <div class="text-4xl">🔀</div>
-                    <h3 class="text-base font-black text-[#0F172A] uppercase tracking-wider">Inter-Device Data Sync Bridge Engine</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">
-                        Sistem Clothvers berjalan 100% mandiri (*serverless*) tanpa database eksternal. Semua data aman tersimpan secara terenkripsi di enklaf browser lokal Anda menggunakan IndexedDB Engine. Amankan ekosistem data Anda dengan mengekspor file berkala.
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                        <button onclick="executeDatabaseBackupToJSON()" class="p-4 bg-[#1E293B] text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md hover:bg-[#0F172A] transition-transform active:scale-95">
-                            📥 Unduh / Backup JSON File
-                        </button>
-                        <label class="p-4 bg-white border border-gray-200 text-[#1E293B] font-black text-xs uppercase tracking-wider rounded-xl shadow-2xs hover:bg-gray-50 cursor-pointer flex items-center justify-center transition-transform active:scale-95">
-                            📤 Unggah / Restore JSON File
-                            <input type="file" id="upload-sync-json-input" class="hidden" onchange="executeDatabaseRestoreFromJSON(event)">
-                        </label>
+                <div class="space-y-6">
+                    <div class="bg-[#1E293B] text-white rounded-xl p-4 lg:p-6 shadow-md space-y-4">
+                        <h3 class="text-md font-bold uppercase tracking-wider text-gray-400">Penyelesaian Kasir</h3>
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                            <span class="text-sm text-gray-300">Total Belanja:</span>
+                            <span id="pos-total-belanja" class="text-xl font-black text-emerald-400">Rp 0</span>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Nominal Pembayaran / DP (Rp)</label>
+                            <input type="number" id="pos-bayar" oninput="calculatePosKembalian()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2.5 text-md font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="space-y-1 text-sm pt-2">
+                            <div class="flex justify-between text-gray-300"><span>Kembalian:</span><span id="pos-kembalian" class="font-semibold text-white">Rp 0</span></div>
+                            <div class="flex justify-between text-gray-300"><span>Sisa Tagihan / Piutang:</span><span id="pos-sisa-tagihan" class="font-bold text-rose-400">Rp 0</span></div>
+                        </div>
+                        <button onclick="checkoutPos()" class="w-full bg-emerald-500 text-slate-900 font-extrabold text-sm py-3 rounded-lg hover:bg-emerald-400 transition-all shadow-md mt-2">Kunci & Cetak Nota Transaksi</button>
+                    </div>
+
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Analisis Distribusi Penjualan Channel</h4>
+                        <div class="h-48 relative"><canvas id="chart-pos-channels"></canvas></div>
                     </div>
                 </div>
             </section>
 
-        </div>
-    </main>
+            <section id="module-dashboard-retur" class="app-module hidden space-y-6">
+                <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm">
+                    <h3 class="text-md font-bold text-[#1E293B] mb-4">Pencatatan Klaim Retur & Kerugian Cacat Produksi</h3>
+                    <form id="form-retur" onsubmit="saveReturData(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pilih Model Pakaian</label>
+                            <select id="retur-select-model" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Jenis Klaim / Log Operasional</label>
+                            <select id="retur-jenis" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                                <option value="Tukar Size">Tukar Size (Pelanggan)</option>
+                                <option value="Cacat Produksi">Cacat Produksi (Kain Rusak / Reject)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Jumlah Barang (Qty)</label>
+                            <input type="number" id="retur-qty" required min="1" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estimasi Kerugian (Rp / Jika Cacat)</label>
+                            <input type="number" id="retur-kerugian" value="0" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div class="md:col-span-4">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Keterangan Alasan</label>
+                            <input type="text" id="retur-keterangan" required placeholder="Contoh: Lobang di ketiak kiri baju / Pelanggan minta tukar dari size M ke L" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div class="md:col-span-4 flex justify-end gap-2">
+                            <button type="submit" class="px-6 py-2 text-sm font-semibold bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-all">Log Masuk Data Klaim</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-sm border-collapse min-w-[800px]">
+                        <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                            <tr>
+                                <th class="p-4">Tanggal Klaim</th>
+                                <th class="p-4">Model Pakaian</th>
+                                <th class="p-4">Jenis Klasifikasi</th>
+                                <th class="p-4">Qty</th>
+                                <th class="p-4">Estimasi Kerugian Finansial</th>
+                                <th class="p-4">Catatan Kronologis</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-retur-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="module-dashboard-inventaris" class="app-module hidden space-y-6">
+                <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm">
+                    <h3 class="text-md font-bold text-[#1E293B] mb-4">Registrasi Aset Alat Kerja Konveksi & Operasional</h3>
+                    <form id="form-inventaris" onsubmit="saveInventarisData(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="hidden" id="inventaris-edit-id">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Tanggal Pembelian</label>
+                            <input type="date" id="inventaris-tanggal" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nama Alat / Nama Aset</label>
+                            <input type="text" id="inventaris-nama-alat" required placeholder="Contoh: Mesin Jahit Juki Obras" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Kategori Kelompok Aset</label>
+                            <select id="inventaris-kategori" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                                <option value="Mesin & Alat Produksi">Mesin & Alat Produksi</option>
+                                <option value="Perlengkapan Toko">Perlengkapan Toko / Display</option>
+                                <option value="Perangkat Digital Kasir">Perangkat Digital Kasir & IT</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Kuantitas (Qty)</label>
+                            <input type="number" id="inventaris-qty" required min="1" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Harga Satuan Aset (Rp)</label>
+                            <input type="number" id="inventaris-harga" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Masa Habis Pakai / Penyusutan (Bulan)</label>
+                            <input type="number" id="inventaris-penyusutan-bulan" required placeholder="Contoh: 36 bulan" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                        </div>
+                        <div class="md:col-span-3 flex justify-end gap-2 pt-2">
+                            <button type="button" onclick="resetFormInventaris()" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-200 rounded-lg transition-all">Reset</button>
+                            <button type="submit" class="px-6 py-2 text-sm font-semibold bg-[#396399] text-white rounded-lg hover:bg-opacity-90 transition-all">Simpan Log Aset</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h3 class="text-md font-bold text-[#0F172A]">Daftar Aset Tetap & Nilai Amortisasi</h3>
+                    <button onclick="downloadPDFMassalInventaris()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                        📥 Download PDF Semua Data Inventaris
+                    </button>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-sm border-collapse min-w-[900px]">
+                        <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                            <tr>
+                                <th class="p-4">Tanggal Beli</th>
+                                <th class="p-4">Nama Alat / Aset</th>
+                                <th class="p-4">Kategori</th>
+                                <th class="p-4">Qty x Harga Satuan</th>
+                                <th class="p-4">Total Nilai Kapital</th>
+                                <th class="p-4">Penyusutan Bulanan</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inventaris-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="module-dashboard-keuangan" class="app-module hidden space-y-6">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-6 text-sm font-bold">
+                        <button onclick="switchKeuanganTab('tab-akumulasi')" id="btn-tab-akumulasi" class="border-b-2 border-[#396399] py-2 text-[#396399]">📒 Buku Laporan Akumulasi Jurnal</button>
+                        <button onclick="switchKeuanganTab('tab-pos-log')" id="btn-tab-pos-log" class="border-b-2 border-transparent py-2 text-gray-500 hover:text-gray-700">🛒 Log Penjualan POS</button>
+                    </nav>
+                </div>
+
+                <div id="sub-tab-akumulasi" class="space-y-6">
+                    <div class="bg-[#f5f5f7] rounded-xl p-4 lg:p-6 border border-gray-100 shadow-sm">
+                        <h4 class="text-sm font-bold text-[#1E293B] mb-3">Pemasukan Jurnal Kas Manual (Modal Masuk/Biaya Ekstra)</h4>
+                        <form id="form-jurnal" onsubmit="saveJurnalManual(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Tanggal</label>
+                                <input type="date" id="jurnal-tanggal" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Keterangan Deskripsi</label>
+                                <input type="text" id="jurnal-keterangan" required placeholder="Contoh: Suntikan Modal Pemilik / Pembayaran Listrik" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Jenis Arus</label>
+                                <select id="jurnal-jenis" class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                                    <option value="Masuk">Uang Masuk / Modal / Pendapatan</option>
+                                    <option value="Keluar">Uang Keluar / Beban Biaya Operasional</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 items-end">
+                                <div class="flex-1">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nominal (Rp)</label>
+                                    <input type="number" id="jurnal-nominal" required class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#396399] focus:outline-none">
+                                </div>
+                                <button type="submit" class="bg-[#396399] text-white font-bold text-xs px-4 py-3 rounded-lg hover:bg-opacity-90 transition-all h-[42px]">Post</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-md font-bold text-[#0F172A]">Aliran Buku Besar Kronologis Akrual</h3>
+                            <select id="jurnal-filter-time" onchange="renderJurnalAkumulasi()" class="text-xs bg-white border border-gray-200 rounded-md p-1 font-semibold text-gray-600 focus:outline-none">
+                                <option value="all">Semua Riwayat</option>
+                                <option value="day">Per Hari Ini</option>
+                                <option value="week">Per Minggu Ini</option>
+                                <option value="month">Per Bulan Terpilih</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="downloadCSVAkumulasiJurnal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-2 rounded-lg transition-all">📊 Ekspor CSV Excel</button>
+                            <button onclick="downloadPDFAkumulasiJurnal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg transition-all">📥 Download PDF Jurnal</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-sm border-collapse min-w-[850px]">
+                            <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                                <tr>
+                                    <th class="p-4">Tanggal Ref</th>
+                                    <th class="p-4">Keterangan Sumber Transaksi</th>
+                                    <th class="p-4">Tipe Aliran</th>
+                                    <th class="p-4 text-right">Debit / Masuk (Rp)</th>
+                                    <th class="p-4 text-right">Kredit / Keluar (Rp)</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </table>
+                            <tbody id="table-jurnal-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="sub-tab-pos-log" class="hidden space-y-4">
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-sm border-collapse min-w-[900px]">
+                            <thead class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-semibold">
+                                <tr>
+                                    <th class="p-4">ID Nota</th>
+                                    <th class="p-4">Waktu Transaksi</th>
+                                    <th class="p-4">Rincian Item Terjual</th>
+                                    <th class="p-4 text-right">Total Transaksi</th>
+                                    <th class="p-4 text-right">Dibayar/DP</th>
+                                    <th class="p-4 text-right">Sisa Tagihan</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-pos-log-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="module-dashboard-sync" class="app-module hidden max-w-xl mx-auto bg-[#f5f5f7] border border-gray-200 rounded-2xl p-6 space-y-6 text-center mt-6 shadow-sm">
+                <div>
+                    <h3 class="text-lg font-black text-[#1E293B]">Inter-Device Backup & Sync Bridge</h3>
+                    <p class="text-xs text-gray-500 mt-1">Gunakan panel ini untuk mengunduh seluruh database lokal Anda atau mengunggah cadangan dari perangkat laptop/HP lain secara real-time.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onclick="backupDatabaseJSON()" class="p-4 bg-[#396399] hover:bg-opacity-90 text-white font-bold rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2">
+                        <span class="text-xl">📤</span>
+                        <span class="text-sm">Backup JSON Ke File</span>
+                    </button>
+                    <label class="p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 cursor-pointer">
+                        <span class="text-xl">📥</span>
+                        <span class="text-sm">Restore Data Dari JSON</span>
+                        <input type="file" id="import-json-file" accept=".json" onchange="restoreDatabaseJSON(event)" class="hidden">
+                    </label>
+                </div>
+                <div class="text-[11px] text-gray-400 font-semibold">
+                    Semua Enkripsi Data Diproses Aman Secara Lokal 100% Bebas Server.
+                </div>
+            </section>
+
+        </main>
+
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex items-center justify-around px-2 z-50 select-none">
+            <button onclick="switchModule('dashboard-stok')" class="mobile-nav-item flex flex-col items-center text-[#396399] font-bold text-[10px]"><span class="text-base">📦</span>Stok</button>
+            <button onclick="switchModule('dashboard-hpp')" class="mobile-nav-item flex flex-col items-center text-gray-400 text-[10px]"><span class="text-base">📊</span>HPP</button>
+            <button onclick="switchModule('dashboard-pos')" class="mobile-nav-item flex flex-col items-center text-gray-400 text-[10px]"><span class="text-base">🛒</span>POS</button>
+            <button onclick="switchModule('dashboard-retur')" class="mobile-nav-item flex flex-col items-center text-gray-400 text-[10px]"><span class="text-base">🔄</span>Retur</button>
+            <button onclick="switchModule('dashboard-inventaris')" class="mobile-nav-item flex flex-col items-center text-gray-400 text-[10px]"><span class="text-base">🔧</span>Aset</button>
+            <button onclick="switchModule('dashboard-keuangan')" class="mobile-nav-item flex flex-col items-center text-gray-400 text-[10px]"><span class="text-base">💵</span>Kas</button>
+        </nav>
+
+    </div>
 
     <script src="script.js"></script>
 </body>
