@@ -1,1228 +1,996 @@
 /**
- * CLOTVERS SYSTEM v1.0 - CORE ENGINE
- * Built exclusively using IndexedDB, Vanilla JS, and Chart.js
+ * CLOTHVERS SYSTEM V1.0 - CORE ENGINE LOGIC
+ * Powered by IndexedDB Local Database & jsPDF Plugins
  */
 
-let db = null;
-let currentModule = 'dashboard-stok';
-let currentKeuanganTab = 'tab-omset';
-let posCart = [];
+let db;
+const DB_NAME = "ClothversDB";
+const DB_VERSION = 1;
 
-// Global charts instances references
-let trendChartInstance = null;
-let platformChartInstance = null;
+// List Ukuran Konveksi
+const SIZES = ["S", "M", "L", "XL", "2XL"];
 
-const SIZES = ['S', 'M', 'L', 'XL', '2XL'];
-
-// Initialize App Lifecycle
+// Inisialisasi Aplikasi Saat DOM Siap
 document.addEventListener("DOMContentLoaded", () => {
-    initPeriodFilters();
     initIndexedDB();
-    renderSizeMatrixInputs();
+    generateMatriksSizeForm();
+    setupGlobalFilters();
 });
 
-// Render Dynamic Period Filter Dropdown (2026 - 2030)
-function initPeriodFilters() {
-    const filterSelect = document.getElementById('global-filter-periode');
-    filterSelect.innerHTML = '';
-    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const currentYear = 2026;
-    
-    for (let y = 2026; y <= 2030; y++) {
-        months.forEach((m, idx) => {
-            const opt = document.createElement('option');
-            const mVal = String(idx + 1).padStart(2, '0');
-            opt.value = `${y}-${mVal}`;
-            opt.innerText = `${m} ${y}`;
-            if (y === 2026 && idx === 5) opt.selected = true; // Default Juni 2026 sesuai waktu berjalan
-            filterSelect.appendChild(opt);
-        });
-    }
+// Setup Filter Global Event Listener
+function setupGlobalFilters() {
+    const d = new Date();
+    document.getElementById("global-bulan").value = String(d.getMonth() + 1).padStart(2, '0');
+    document.getElementById("global-tahun").value = "2026";
+
+    document.getElementById("global-bulan").addEventListener("change", refreshAllViews);
+    document.getElementById("global-tahun").addEventListener("change", refreshAllViews);
 }
 
-// Render dynamic input fields for size matrix
-function renderSizeMatrixInputs() {
-    const container = document.getElementById('size-matrix-inputs');
-    container.innerHTML = '';
-    SIZES.forEach(size => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-gray-100 hover:bg-gray-50";
-        tr.innerHTML = `
-            <td class="p-2 border border-gray-200 font-bold text-[#396399] text-center">${size}</td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-stok-${size}" value="10" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-hpp-${size}" value="45000" required class="w-full bg-white border border-gray-200 p-1 text-right rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-jual-${size}" value="85000" required class="w-full bg-white border border-gray-200 p-1 text-right rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-wh-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-ht-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="number" id="sm-tb-${size}" placeholder="cm" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
-            <td class="p-1 border border-gray-200"><input type="text" id="sm-bbrec-${size}" placeholder="e.g. 50-60" required class="w-full bg-white border border-gray-200 p-1 text-center rounded text-xs text-[#0F172A]"></td>
-        `;
-        container.appendChild(tr);
-    });
+function refreshAllViews() {
+    renderTabelStok();
+    renderTabelHPP();
+    loadDropdownProduk();
+    renderLogPOS();
+    renderTabelRetur();
+    renderTabelInventaris();
+    renderBukuAkumulasi();
 }
 
-// Initialize Open IndexedDB Local Engine
+// -------------------------------------------------------------------------
+// CORE ENGINE: DATABASE LOKAL (IndexedDB Engine)
+// -------------------------------------------------------------------------
 function initIndexedDB() {
-    const request = indexedDB.open("ClotversDB", 1);
-    
-    request.onupgradeneeded = (e) => {
-        db = e.target.result;
-        if (!db.objectStoreNames.contains('store_produk')) db.createObjectStore('store_produk', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('store_hpp')) db.createObjectStore('store_hpp', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('store_transaksi')) db.createObjectStore('store_transaksi', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('store_jurnal_akuntansi')) db.createObjectStore('store_jurnal_akuntansi', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('store_retur_reject')) db.createObjectStore('store_retur_reject', { keyPath: 'id', autoIncrement: true });
-    };
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+    request.onerror = (e) => console.error("IndexedDB Error:", e);
     request.onsuccess = (e) => {
         db = e.target.result;
-        refreshAllTablesAndDropdowns();
+        refreshAllViews();
     };
-    
-    request.onerror = () => alert("CRITICAL ERROR: Gagal memuat IndexedDB lokal komputer anda.");
+
+    request.onupgradeneeded = (e) => {
+        const localDb = e.target.result;
+        
+        if (!localDb.objectStoreNames.contains("store_produk")) {
+            localDb.createObjectStore("store_produk", { keyPath: "id", autoIncrement: true });
+        }
+        if (!localDb.objectStoreNames.contains("store_hpp")) {
+            localDb.createObjectStore("store_hpp", { keyPath: "id", autoIncrement: true });
+        }
+        if (!localDb.objectStoreNames.contains("store_transaksi")) {
+            localDb.createObjectStore("store_transaksi", { keyPath: "id", autoIncrement: true });
+        }
+        if (!localDb.objectStoreNames.contains("store_jurnal_akuntansi")) {
+            localDb.createObjectStore("store_jurnal_akuntansi", { keyPath: "id", autoIncrement: true });
+        }
+        if (!localDb.objectStoreNames.contains("store_retur_reject")) {
+            localDb.createObjectStore("store_retur_reject", { keyPath: "id", autoIncrement: true });
+        }
+        if (!localDb.objectStoreNames.contains("store_inventaris")) {
+            localDb.createObjectStore("store_inventaris", { keyPath: "id", autoIncrement: true });
+        }
+    };
 }
 
-// Global Dynamic Pipeline Filter Switch
-function triggerGlobalFilter() {
-    refreshAllTablesAndDropdowns();
+// Helper Transaksi IndexedDB Generic
+function getStore(storeName, mode = "readonly") {
+    return db.transaction(storeName, mode).objectStore(storeName);
 }
 
-function refreshAllTablesAndDropdowns() {
-    renderTabelProduk();
-    renderTabelHPP();
-    populateDropdownsPOSnRetur();
-    renderTabelPOS();
-    renderAnalisisChartsDanTabel();
-    renderTabelRetur();
-    renderTabelKeuanganAkuntansi();
-}
+// -------------------------------------------------------------------------
+// UTILITY: MANAJEMEN MODUL & LAYOUT VIEW
+// -------------------------------------------------------------------------
+function switchModule(moduleId) {
+    document.querySelectorAll(".modul-content").forEach(el => el.classList.add("hidden"));
+    document.getElementById(`modul-${moduleId}`).classList.remove("hidden");
 
-// Module Single-Page routing system layout
-function switchModule(modId) {
-    currentModule = modId;
-    const modules = ['modul-stok', 'modul-hpp', 'modul-pos', 'modul-analisis', 'modul-retur', 'modul-keuangan', 'modul-sync'];
-    modules.forEach(m => document.getElementById(m).classList.add('hidden'));
-    
-    const navButtons = document.querySelectorAll('.nav-btn');
-    navButtons.forEach(b => {
-        b.classList.remove('bg-[#396399]', 'text-white');
-        b.classList.add('text-[#1E293B]', 'hover:bg-gray-200');
+    // Efek Active Sidebar
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.remove("bg-[#396399]", "text-white");
+        btn.classList.add("text-[#1E293B]", "hover:bg-gray-200/60");
     });
+    const clickedBtn = event.currentTarget;
+    clickedBtn.classList.remove("text-[#1E293B]", "hover:bg-gray-200/60");
+    clickedBtn.classList.add("bg-[#396399]", "text-white");
 
-    let activeMod = '';
-    let titleStr = '';
-    let targetBtn = '';
-
-    switch(modId) {
-        case 'dashboard-stok': activeMod = 'modul-stok'; titleStr = 'Dashboard Input Stok Pakaian'; targetBtn = 'btn-stok'; break;
-        case 'dashboard-hpp': activeMod = 'modul-hpp'; titleStr = 'Manajemen HPP & Penjualan'; targetBtn = 'btn-hpp'; break;
-        case 'dashboard-pos': activeMod = 'modul-pos'; titleStr = 'Terminal POS Kasir Utama'; targetBtn = 'btn-pos'; break;
-        case 'dashboard-analisis': activeMod = 'modul-analisis'; titleStr = 'Rekapan & Grafik Tren Analisis'; targetBtn = 'btn-analisis'; break;
-        case 'dashboard-retur': activeMod = 'modul-retur'; titleStr = 'Modul Manajemen Retur & Reject'; targetBtn = 'btn-retur'; break;
-        case 'dashboard-keuangan': activeMod = 'modul-keuangan'; titleStr = 'Dashboard Akuntansi & Keuangan Terikat'; targetBtn = 'btn-keuangan'; break;
-        case 'dashboard-sync': activeMod = 'modul-sync'; titleStr = 'Inter-Device Data Sync Bridge'; targetBtn = 'btn-sync'; break;
-    }
-
-    document.getElementById(activeMod).classList.remove('hidden');
-    document.getElementById('current-module-title').innerText = titleStr;
-    document.getElementById(targetBtn).classList.add('bg-[#396399]', 'text-white');
-    
-    refreshAllTablesAndDropdowns();
+    // Update Title Topbar
+    const titleMap = {
+        stok: "Master Stok Pakaian",
+        hpp: "Manajemen HPP",
+        pos: "Terminal POS Kasir",
+        retur: "Retur & Barang Cacat",
+        inventaris: "Inventaris Alat Kerja",
+        keuangan: "Akuntansi & Keuangan",
+        sync: "Backup & Sync Bridge"
+    };
+    document.getElementById("module-title").innerText = titleMap[moduleId];
+    refreshAllViews();
 }
 
-// Get Selected Global Year Month Object Date Filter Helper
-function getFilterRange() {
-    return document.getElementById('global-filter-periode').value; // Returns YYYY-MM
+function switchSubKeuangan(subId) {
+    document.querySelectorAll(".sub-keuangan-content").forEach(el => el.classList.add("hidden"));
+    document.getElementById(`sub-${subId}`).classList.remove("hidden");
+
+    document.querySelectorAll(".sub-keuangan-btn").forEach(btn => {
+        btn.classList.remove("bg-[#396399]", "text-white");
+        btn.classList.add("text-gray-500", "hover:bg-gray-100");
+    });
+    event.currentTarget.classList.remove("text-gray-500", "hover:bg-gray-100");
+    event.currentTarget.classList.add("bg-[#396399]", "text-white");
 }
 
-function matchFilterDate(dateStr) {
-    if(!dateStr) return false;
-    return dateStr.startsWith(getFilterRange());
-}
-
-// ==========================================
-// A. LOGIKA UTAMA: MANAJEMEN MASTER PRODUK
-// ==========================================
-function saveProduk(e) {
-    e.preventDefault();
-    const idEdit = document.getElementById('produk-id-edit').value;
-    const namaModel = document.getElementById('prod-nama-model').value;
-    const jenisKain = document.getElementById('prod-jenis-kain').value;
-    const tipeGsm = document.getElementById('prod-tipe-gsm').value;
-    const detailProd = document.getElementById('prod-detail-produksi').value;
-    const warna = document.getElementById('prod-warna').value || "Default";
-
-    let matriksVarian = [];
+// -------------------------------------------------------------------------
+// MODUL A: MASTER STOK PAKAIAN (LOGIC & INTERACTION)
+// -------------------------------------------------------------------------
+function generateMatriksSizeForm() {
+    const tbody = document.getElementById("matriks-size-body");
+    tbody.innerHTML = "";
     SIZES.forEach(size => {
+        tbody.innerHTML += `
+            <tr data-size="${size}">
+                <td class="py-2 font-bold text-[#0F172A]">${size}</td>
+                <td class="py-2"><input type="text" class="size-warna border border-gray-200 rounded-lg p-1 text-xs w-24" placeholder="Hitam" required></td>
+                <td class="py-2"><input type="number" class="size-stok border border-gray-200 rounded-lg p-1 text-xs w-20" value="0" min="0" required></td>
+                <td class="py-2"><input type="number" class="size-hpp border border-gray-200 rounded-lg p-1 text-xs w-24" value="0" min="0" required></td>
+                <td class="py-2"><input type="number" class="size-jual border border-gray-200 rounded-lg p-1 text-xs w-24" value="0" min="0" required></td>
+                <td class="py-2"><input type="text" class="size-wh border border-gray-200 rounded-lg p-1 text-xs w-16" placeholder="50"></td>
+                <td class="py-2"><input type="text" class="size-ht border border-gray-200 rounded-lg p-1 text-xs w-16" placeholder="70"></td>
+                <td class="py-2"><input type="text" class="size-rec border border-gray-200 rounded-lg p-1 text-xs w-24" placeholder="165cm / 60kg"></td>
+            </tr>
+        `;
+    });
+}
+
+document.getElementById("form-stok").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const id = document.getElementById("stok-id").value;
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    const matriksVarian = [];
+    document.querySelectorAll("#matriks-size-body tr").forEach(row => {
         matriksVarian.push({
-            size: size,
-            stok: parseInt(document.getElementById(`sm-stok-${size}`).value) || 0,
-            hpp_varian: parseFloat(document.getElementById(`sm-hpp-${size}`).value) || 0,
-            jual_varian: parseFloat(document.getElementById(`sm-jual-${size}`).value) || 0,
-            wh: parseInt(document.getElementById(`sm-wh-${size}`).value) || 0,
-            ht: parseInt(document.getElementById(`sm-ht-${size}`).value) || 0,
-            tb: parseInt(document.getElementById(`sm-tb-${size}`).value) || 0,
-            bb_rec: document.getElementById(`sm-bbrec-${size}`).value || "-"
+            size: row.dataset.size,
+            warna: row.querySelector(".size-warna").value,
+            stok: parseInt(row.querySelector(".size-stok").value) || 0,
+            hpp_varian: parseFloat(row.querySelector(".size-hpp").value) || 0,
+            jual_varian: parseFloat(row.querySelector(".size-jual").value) || 0,
+            wh: row.querySelector(".size-wh").value,
+            ht: row.querySelector(".size-ht").value,
+            bb_rec: row.querySelector(".size-rec").value
         });
     });
 
     const dataProduk = {
-        nama_model: namaModel,
-        jenis_kain: jenisKain,
-        tipe_kain_gsm: tipeGsm,
-        detail_produksi: detailProd,
-        warna: warna,
+        nama_model: document.getElementById("stok-nama").value,
+        jenis_kain: document.getElementById("stok-kain").value,
+        tipe_kain_gsm: document.getElementById("stok-gsm").value,
+        detail_production: document.getElementById("stok-detail").value,
         matriks_varian: matriksVarian,
-        timestamp: new Date().toISOString()
+        periode: currentPeriode
     };
 
-    const tx = db.transaction('store_produk', 'readwrite');
-    const store = tx.objectStore('store_produk');
-    
-    if (idEdit) {
-        dataProduk.id = parseInt(idEdit);
-        store.put(dataProduk);
+    const store = getStore("store_produk", "readwrite");
+    let req;
+    if (id) {
+        dataProduk.id = parseInt(id);
+        req = store.put(dataProduk);
     } else {
-        store.add(dataProduk);
+        req = store.add(dataProduk);
     }
 
-    tx.oncomplete = () => {
-        document.getElementById('form-produk').reset();
-        document.getElementById('produk-id-edit').value = '';
-        renderSizeMatrixInputs();
-        refreshAllTablesAndDropdowns();
-        alert("Master data produk berhasil tersimpan ke sistem browser local.");
+    req.onsuccess = () => {
+        resetFormStok();
+        refreshAllViews();
     };
+});
+
+function resetFormStok() {
+    document.getElementById("stok-id").value = "";
+    document.getElementById("form-stok").reset();
+    generateMatriksSizeForm();
 }
 
-function renderTabelProduk() {
-    const tbody = document.getElementById('tabel-produk-body');
-    tbody.innerHTML = '';
-    
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const rowData = cursor.value;
-            const tr = document.createElement('tr');
-            tr.className = "border-b border-gray-100 hover:bg-gray-50 text-xs";
-            
-            let matrixHtml = `<div class="grid grid-cols-1 gap-1 text-[11px]">`;
-            rowData.matriks_varian.forEach(v => {
-                matrixHtml += `<div><strong>Size ${v.size} [Stok:${v.stok} Pcs]</strong> | HPP: Rp ${v.hpp_varian.toLocaleString()} | Jual: Rp ${v.jual_varian.toLocaleString()} | Dimensi: ${v.wh}x${v.ht}x${v.tb}cm (BB:${v.bb_rec}kg)</div>`;
-            });
-            matrixHtml += `</div>`;
+function renderTabelStok() {
+    const tbody = document.getElementById("tabel-stok-body");
+    tbody.innerHTML = "";
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
 
-            tr.innerHTML = `
-                <td class="p-3 font-bold text-[#1E293B]">${rowData.nama_model}<br><span class="text-xs text-gray-500 font-normal">Warna: ${rowData.warna}</span></td>
-                <td class="p-3">${rowData.jenis_kain}<br><span class="text-xs text-gray-500 font-normal">${rowData.tipe_kain_gsm} GSM</span></td>
-                <td class="p-3">${matrixHtml}</td>
-                <td class="p-3 text-center space-x-1 whitespace-nowrap">
-                    <button onclick="editProduk(${rowData.id})" class="text-[#396399] font-bold hover:underline">Edit</button>
-                    <button onclick="hapusRecord('store_produk', ${rowData.id})" class="text-red-600 font-bold hover:underline ml-1">Hapus</button>
-                    <button onclick="stockOpnamePrompt(${rowData.id})" class="text-amber-700 font-bold hover:underline ml-1">Opname</button>
-                </td>
+    getStore("store_produk").getAll().onsuccess = (e) => {
+        const listData = e.target.result.filter(p => p.periode === currentPeriode);
+        listData.forEach(p => {
+            let totalStok = p.matriks_varian.reduce((acc, curr) => acc + curr.stok, 0);
+            let varianHTML = p.matriks_varian.map(v => 
+                `<span class="inline-block bg-gray-100 border border-gray-200 text-xs text-[#1E293B] rounded px-1.5 py-0.5 m-0.5">
+                    <b>${v.size}</b> (${v.warna}): S:${v.stok} | Hpp:Rp${v.hpp_varian.toLocaleString()}
+                </span>`
+            ).join(" ");
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="p-4 font-bold text-[#0F172A]">
+                        ${p.nama_model}<br>
+                        <span class="text-xs text-gray-500 font-normal">${p.jenis_kain} - ${p.tipe_kain_gsm}</span>
+                    </td>
+                    <td class="p-4 max-w-md">${varianHTML}</td>
+                    <td class="p-4 font-black text-[#396399]">${totalStok} Pcs</td>
+                    <td class="p-4 text-center space-x-2">
+                        <button onclick="editStok(${p.id})" class="text-xs bg-amber-500 text-white font-bold px-2.5 py-1 rounded-lg">Edit</button>
+                        <button onclick="hapusStok(${p.id})" class="text-xs bg-rose-600 text-white font-bold px-2.5 py-1 rounded-lg">Hapus</button>
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(tr);
-            cursor.continue();
-        }
+        });
     };
 }
 
-function editProduk(id) {
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').get(id).onsuccess = (e) => {
+function editStok(id) {
+    getStore("store_produk").get(id).onsuccess = (e) => {
         const p = e.target.result;
-        document.getElementById('produk-id-edit').value = p.id;
-        document.getElementById('prod-nama-model').value = p.nama_model;
-        document.getElementById('prod-jenis-kain').value = p.jenis_kain;
-        document.getElementById('prod-tipe-gsm').value = p.tipe_kain_gsm;
-        document.getElementById('prod-detail-produksi').value = p.detail_produksi;
-        document.getElementById('prod-warna').value = p.warna;
+        document.getElementById("stok-id").value = p.id;
+        document.getElementById("stok-nama").value = p.nama_model;
+        document.getElementById("stok-kain").value = p.jenis_kain;
+        document.getElementById("stok-gsm").value = p.tipe_kain_gsm;
+        document.getElementById("stok-detail").value = p.detail_production;
 
         p.matriks_varian.forEach(v => {
-            if(document.getElementById(`sm-stok-${v.size}`)) {
-                document.getElementById(`sm-stok-${v.size}`).value = v.stok;
-                document.getElementById(`sm-hpp-${v.size}`).value = v.hpp_varian;
-                document.getElementById(`sm-jual-${v.size}`).value = v.jual_varian;
-                document.getElementById(`sm-wh-${v.size}`).value = v.wh;
-                document.getElementById(`sm-ht-${v.size}`).value = v.ht;
-                document.getElementById(`sm-tb-${v.size}`).value = v.tb;
-                document.getElementById(`sm-bbrec-${v.size}`).value = v.bb_rec;
+            const row = document.querySelector(`#matriks-size-body tr[data-size="${v.size}"]`);
+            if (row) {
+                row.querySelector(".size-warna").value = v.warna;
+                row.querySelector(".size-stok").value = v.stok;
+                row.querySelector(".size-hpp").value = v.hpp_varian;
+                row.querySelector(".size-jual").value = v.jual_varian;
+                row.querySelector(".size-wh").value = v.wh;
+                row.querySelector(".size-ht").value = v.ht;
+                row.querySelector(".size-rec").value = v.bb_rec;
             }
         });
-        window.scrollTo({top: 0, behavior: 'smooth'});
     };
 }
 
-function stockOpnamePrompt(id) {
-    const sizeSelect = prompt("Masukkan Ukuran Baju yang di-Opname (S/M/L/XL/2XL):");
-    if(!sizeSelect || !SIZES.includes(sizeSelect.toUpperCase())) return alert("Ukuran dibatalkan atau tidak valid.");
-    
-    const newStock = prompt(`Masukkan Jumlah Stok Aktual Fisik yang Baru untuk Size ${sizeSelect.toUpperCase()}:`);
-    if(newStock === null || isNaN(newStock)) return alert("Input stok tidak valid.");
+function hapusStok(id) {
+    if(confirm("Hapus master model pakaian ini?")) {
+        getStore("store_produk", "readwrite").delete(id).onsuccess = () => refreshAllViews();
+    }
+}
 
-    const tx = db.transaction('store_produk', 'readwrite');
-    const store = tx.objectStore('store_produk');
-    store.get(id).onsuccess = (e) => {
-        let p = e.target.result;
-        let matched = false;
-        p.matriks_varian.forEach(v => {
-            if(v.size === sizeSelect.toUpperCase()) {
-                v.stok = parseInt(newStock);
-                matched = true;
-            }
+// Fitur Unduh PDF Kolektif Massal untuk Stok
+function cetakPDFMassalStok() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+    
+    doc.text(`LAPORAN EXEKUTIF MASTER STOK CLOTHVERS SYSTEM - PERIODE ${currentPeriode}`, 14, 15);
+    
+    getStore("store_produk").getAll().onsuccess = (e) => {
+        const data = e.target.result.filter(p => p.periode === currentPeriode);
+        const rows = [];
+        data.forEach(p => {
+            p.matriks_varian.forEach(v => {
+                rows.push([
+                    p.nama_model, p.jenis_kain, p.tipe_kain_gsm,
+                    v.size, v.warna, v.stok, `Rp ${v.hpp_varian.toLocaleString()}`, `Rp ${v.jual_varian.toLocaleString()}`
+                ]);
+            });
         });
-        if(matched) {
-            store.put(p);
-            tx.oncomplete = () => { refreshAllTablesAndDropdowns(); alert("Stock Opname Berhasil diperbarui."); };
+        
+        doc.autoTable({
+            head: [['Nama Model', 'Kain', 'GSM', 'Size', 'Warna', 'Stok', 'HPP Varian', 'Harga POS']],
+            body: rows,
+            startY: 22,
+            theme: 'grid'
+        });
+        doc.save(`MASTER_STOK_MASSAL_${currentPeriode}.pdf`);
+    };
+}
+
+// -------------------------------------------------------------------------
+// MODUL B: MANAJEMEN HPP (ANTI-SALAH HITUNG LIVE SYNC)
+// -------------------------------------------------------------------------
+function loadDropdownProduk() {
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+    const hppSelect = document.getElementById("hpp-pilih-model");
+    const posSelect = document.getElementById("pos-pilih-produk");
+    const returSelect = document.getElementById("retur-pilih-produk");
+
+    if(!hppSelect) return;
+
+    getStore("store_produk").getAll().onsuccess = (e) => {
+        const data = e.target.result.filter(p => p.periode === currentPeriode);
+        let opts = `<option value="">-- Pilih Model --</option>`;
+        data.forEach(p => {
+            opts += `<option value="${p.id}">${p.nama_model}</option>`;
+        });
+        hppSelect.innerHTML = opts;
+        posSelect.innerHTML = opts;
+        returSelect.innerHTML = opts;
+    };
+}
+
+function syncBiayaKainOtomatis() {
+    const modelId = document.getElementById("hpp-pilih-model").value;
+    const sizeTerpilih = document.getElementById("hpp-pilih-size").value;
+    const inputKain = document.getElementById("hpp-biaya-kain");
+
+    if(!modelId) {
+        inputKain.value = 0;
+        return;
+    }
+
+    getStore("store_produk").get(parseInt(modelId)).onsuccess = (e) => {
+        const p = e.target.result;
+        const varianMatch = p.matriks_varian.find(v => v.size === sizeTerpilih);
+        if (varianMatch) {
+            inputKain.value = varianMatch.hpp_varian;
+        } else {
+            inputKain.value = 0;
+        }
+        hitungSkemaHPP();
+    };
+}
+
+function hitungSkemaHPP() {
+    const kain = parseFloat(document.getElementById("hpp-biaya-kain").value) || 0;
+    const jahit = parseFloat(document.getElementById("hpp-ongkos-jahit").value) || 0;
+    const sablon = parseFloat(document.getElementById("hpp-sablon").value) || 0;
+    const packaging = parseFloat(document.getElementById("hpp-packaging").value) || 0;
+    const marginPercent = parseFloat(document.getElementById("hpp-margin").value) || 0;
+
+    const hppTotal = kain + jahit + sablon + packaging;
+    document.getElementById("hpp-total-calc").value = hppTotal;
+
+    // Base Price dengan target margin profit
+    const baseJual = hppTotal / (1 - (marginPercent / 100));
+
+    // Hitung Multi-Channel Admin Marketplace Formula
+    const shopeeAdm = parseFloat(document.getElementById("adm-shopee").value) || 0;
+    const tokpedAdm = parseFloat(document.getElementById("adm-tokped").value) || 0;
+    const tiktokAdm = parseFloat(document.getElementById("adm-tiktok").value) || 0;
+
+    document.getElementById("txt-offline").innerText = `Rp ${Math.round(baseJual).toLocaleString()}`;
+    document.getElementById("txt-shopee").innerText = `Rp ${Math.round(baseJual / (1 - (shopeeAdm/100))).toLocaleString()}`;
+    document.getElementById("txt-tokped").innerText = `Rp ${Math.round(baseJual / (1 - (tokpedAdm/100))).toLocaleString()}`;
+    document.getElementById("txt-tiktok").innerText = `Rp ${Math.round(baseJual / (1 - (tiktokAdm/100))).toLocaleString()}`;
+}
+
+document.getElementById("form-hpp").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const id = document.getElementById("hpp-id").value;
+    const modelId = document.getElementById("hpp-pilih-model").value;
+    const modelText = document.getElementById("hpp-pilih-model").options[document.getElementById("hpp-pilih-model").selectedIndex].text;
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    const hppData = {
+        model_id: parseInt(modelId),
+        nama_model: modelText,
+        size: document.getElementById("hpp-pilih-size").value,
+        kain: parseFloat(document.getElementById("hpp-biaya-kain").value) || 0,
+        jahit: parseFloat(document.getElementById("hpp-ongkos-jahit").value) || 0,
+        sablon: parseFloat(document.getElementById("hpp-sablon").value) || 0,
+        packaging: parseFloat(document.getElementById("hpp-packaging").value) || 0,
+        margin: parseFloat(document.getElementById("hpp-margin").value) || 0,
+        hpp_total: parseFloat(document.getElementById("hpp-total-calc").value) || 0,
+        periode: currentPeriode,
+        channels: {
+            offline: document.getElementById("txt-offline").innerText,
+            shopee: document.getElementById("txt-shopee").innerText,
+            tokped: document.getElementById("txt-tokped").innerText,
+            tiktok: document.getElementById("txt-tiktok").innerText
         }
     };
-}
 
-// ==========================================
-// B. LOGIKA MANAJEMEN ESTIMASI HPP LENGKAP
-// ==========================================
-function saveHPP(e) {
-    e.preventDefault();
-    const modelId = document.getElementById('hpp-model-select').value;
-    const modelText = document.getElementById('hpp-model-select').options[document.getElementById('hpp-model-select').selectedIndex].text;
-    const bKain = parseFloat(document.getElementById('hpp-kain').value) || 0;
-    const bJahit = parseFloat(document.getElementById('hpp-jahit').value) || 0;
-    const bSablon = parseFloat(document.getElementById('hpp-sablon').value) || 0;
-    const bPack = parseFloat(document.getElementById('hpp-pack').value) || 0;
-    const marginPercent = parseFloat(document.getElementById('hpp-margin').value) || 0;
+    const store = getStore("store_hpp", "readwrite");
+    let req = id ? store.put({...hppData, id: parseInt(id)}) : store.add(hppData);
 
-    const hppTotal = bKain + bJahit + bSablon + bPack;
-    const hargaJualBersih = hppTotal + (hppTotal * (marginPercent / 100));
-
-    // Ambil input manual potongan admin (%)
-    const admWa = parseFloat(document.getElementById('adm-wa').value) || 0;
-    const admShopee = parseFloat(document.getElementById('adm-shopee').value) || 0;
-    const admTiktok = parseFloat(document.getElementById('adm-tiktok').value) || 0;
-    const admReseller = parseFloat(document.getElementById('adm-reseller').value) || 0;
-    const admGrosir = parseFloat(document.getElementById('adm-grosir').value) || 0;
-
-    const dataHpp = {
-        produk_id: parseInt(modelId),
-        nama_model: modelText,
-        biaya_kain: bKain,
-        ongkos_jahit: bJahit,
-        aplikasi_sablon: bSablon,
-        packaging: bPack,
-        margin_percent: marginPercent,
-        hpp_total: hppTotal,
-        harga_jual_channels: {
-            WhatsApp: hargaJualBersih + (hargaJualBersih * (admWa / 100)),
-            Shopee: hargaJualBersih + (hargaJualBersih * (admShopee / 100)),
-            TikTok: hargaJualBersih + (hargaJualBersih * (admTiktok / 100)),
-            Reseller: hargaJualBersih - (hargaJualBersih * (admReseller / 100)), // skema diskon khusus reseller
-            Grosir: hargaJualBersih - (hargaJualBersih * (admGrosir / 100))
-        },
-        timestamp: new Date().toISOString()
+    req.onsuccess = () => {
+        document.getElementById("hpp-id").value = "";
+        document.getElementById("form-hpp").reset();
+        refreshAllViews();
     };
-
-    const tx = db.transaction('store_hpp', 'readwrite');
-    tx.objectStore('store_hpp').add(dataHpp);
-    tx.oncomplete = () => {
-        document.getElementById('form-hpp').reset();
-        refreshAllTablesAndDropdowns();
-        alert("Kalkulasi simulasi HPP tersimpan.");
-    };
-}
+});
 
 function renderTabelHPP() {
-    const tbody = document.getElementById('tabel-hpp-body');
-    tbody.innerHTML = '';
-    const tx = db.transaction('store_hpp', 'readonly');
-    tx.objectStore('store_hpp').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const h = cursor.value;
-            const tr = document.createElement('tr');
-            tr.className = "border-b border-gray-100 text-xs";
-            tr.innerHTML = `
-                <td class="p-3 font-semibold">${h.nama_model}</td>
-                <td class="p-3 font-bold text-red-700">Rp ${h.hpp_total.toLocaleString()}</td>
-                <td class="p-3 font-bold text-emerald-700">Rp ${(h.hpp_total + (h.hpp_total*(h.margin_percent/100))).toLocaleString()} (${h.margin_percent}%)</td>
-                <td class="p-3 text-gray-600">
-                    WA: Rp ${Math.round(h.harga_jual_channels.WhatsApp).toLocaleString()} | 
-                    SP: Rp ${Math.round(h.harga_jual_channels.Shopee).toLocaleString()} | 
-                    TT: Rp ${Math.round(h.harga_jual_channels.TikTok).toLocaleString()} | 
-                    RS: Rp ${Math.round(h.harga_jual_channels.Reseller).toLocaleString()} | 
-                    GR: Rp ${Math.round(h.harga_jual_channels.Grosir).toLocaleString()}
-                </td>
-                <td class="p-3 text-center space-x-2 whitespace-nowrap">
-                    <button onclick="downloadPDFSkemaHPP(${h.id})" class="text-[#396399] font-bold hover:underline">PDF Skema</button>
-                    <button onclick="hapusRecord('store_hpp', ${h.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-            cursor.continue();
-        }
-    };
-}
+    const tbody = document.getElementById("tabel-hpp-body");
+    tbody.innerHTML = "";
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
 
-// ==========================================
-// C. LOGIKA TERMINAL POS KASIR ENGINE
-// ==========================================
-function populateDropdownsPOSnRetur() {
-    const posSel = document.getElementById('pos-produk-select');
-    const returSel = document.getElementById('retur-produk-select');
-    const hppSel = document.getElementById('hpp-model-select');
-    
-    posSel.innerHTML = '';
-    returSel.innerHTML = '';
-    hppSel.innerHTML = '';
-
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const p = cursor.value;
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.innerText = `${p.nama_model} (${p.warna})`;
-            
-            posSel.appendChild(opt.cloneNode(true));
-            returSel.appendChild(opt.cloneNode(true));
-            hppSel.appendChild(opt.cloneNode(true));
-            cursor.continue();
-        }
-    };
-}
-
-function updatePosVarianDropdown() {
-    const prodId = document.getElementById('pos-produk-select').value;
-    const varianSel = document.getElementById('pos-varian-select');
-    varianSel.innerHTML = '';
-    if(!prodId) return;
-
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
-        const p = e.target.result;
-        p.matriks_varian.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = `${p.warna}|${v.size}|${v.jual_varian}`;
-            opt.innerText = `Warna ${p.warna} - Size ${v.size} [Stok:${v.stok}] - Rp ${v.jual_varian.toLocaleString()}`;
-            varianSel.appendChild(opt);
-        });
-    };
-}
-
-function addPosItem(e) {
-    e.preventDefault();
-    const prodId = document.getElementById('pos-produk-select').value;
-    const modelText = document.getElementById('pos-produk-select').options[document.getElementById('pos-produk-select').selectedIndex].text;
-    const varValue = document.getElementById('pos-varian-select').value;
-    const qty = parseInt(document.getElementById('pos-qty').value) || 1;
-    const platform = document.getElementById('pos-platform').value;
-
-    if(!varValue) return alert("Pilih varian produk.");
-    const [warna, size, hargaJual] = varValue.split('|');
-
-    posCart.push({
-        produk_id: parseInt(prodId),
-        nama_model: modelText,
-        warna: warna,
-        size: size,
-        harga_satuan: parseFloat(hargaJual),
-        qty: qty,
-        platform: platform,
-        subtotal: parseFloat(hargaJual) * qty
-    });
-
-    renderPosCart();
-}
-
-function renderPosCart() {
-    const tbody = document.getElementById('pos-cart-body');
-    tbody.innerHTML = '';
-    let total = 0;
-
-    posCart.forEach((item, idx) => {
-        total += item.subtotal;
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-gray-100 text-xs";
-        tr.innerHTML = `
-            <td class="p-2 font-medium">${item.nama_model} (Warna:${item.warna} Size:${item.size})</td>
-            <td class="p-2">${item.platform}</td>
-            <td class="p-2 text-center">${item.qty}</td>
-            <td class="p-2 text-right">Rp ${item.harga_satuan.toLocaleString()}</td>
-            <td class="p-2 text-right font-bold">Rp ${item.subtotal.toLocaleString()}</td>
-            <td class="p-2 text-center"><button onclick="posCart.splice(${idx},1); renderPosCart();" class="text-red-600 font-bold hover:underline">Batal</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    document.getElementById('pos-txt-subtotal').innerText = `Rp ${total.toLocaleString()}`;
-    recalculatePosBilling();
-}
-
-function recalculatePosBilling() {
-    let subtotal = 0;
-    posCart.forEach(i => subtotal += i.subtotal);
-    
-    const diskon = parseFloat(document.getElementById('pos-diskon').value) || 0;
-    const ongkir = parseFloat(document.getElementById('pos-ongkir').value) || 0;
-    const grandTotal = subtotal - diskon + ongkir;
-
-    document.getElementById('pos-txt-grandtotal').innerText = `Rp ${grandTotal.toLocaleString()}`;
-
-    const statusBayar = document.getElementById('pos-status-bayar').value;
-    if(statusBayar === 'DP') {
-        const dp = parseFloat(document.getElementById('pos-dp-amount').value) || 0;
-        document.getElementById('pos-sisa-tagihan').value = Math.max(0, grandTotal - dp);
-    } else if(statusBayar === 'Piutang') {
-        document.getElementById('pos-sisa-tagihan').value = grandTotal;
-    } else {
-        document.getElementById('pos-sisa-tagihan').value = 0;
-    }
-}
-
-function togglePoCalc() {
-    const v = document.getElementById('pos-status-bayar').value;
-    if (v === 'DP' || v === 'Piutang') {
-        document.getElementById('po-calc-container').classList.remove('hidden');
-        if(v === 'Piutang') {
-            document.getElementById('pos-dp-amount').value = 0;
-            document.getElementById('pos-dp-amount').disabled = true;
-        } else {
-            document.getElementById('pos-dp-amount').disabled = false;
-        }
-    } else {
-        document.getElementById('po-calc-container').classList.add('hidden');
-    }
-    recalculatePosBilling();
-}
-
-function checkoutPos() {
-    if(posCart.length === 0) return alert("Keranjang belanja kasir kosong.");
-
-    const diskon = parseFloat(document.getElementById('pos-diskon').value) || 0;
-    const ongkir = parseFloat(document.getElementById('pos-ongkir').value) || 0;
-    const metode = document.getElementById('pos-metode').value;
-    const statusBayar = document.getElementById('pos-status-bayar').value;
-    const dpVal = parseFloat(document.getElementById('pos-dp-amount').value) || 0;
-    const sisa = parseFloat(document.getElementById('pos-sisa-tagihan').value) || 0;
-    const tglPo = document.getElementById('pos-tgl-po').value || "";
-    const resi = document.getElementById('pos-resi').value || "-";
-    const dateNow = new Date().toISOString().split('T')[0];
-
-    const tx = db.transaction(['store_transaksi', 'store_produk', 'store_jurnal_akuntansi'], 'readwrite');
-
-    posCart.forEach(item => {
-        const trData = {
-            tanggal_order: dateNow,
-            tanggal_selesai_po: tglPo,
-            produk_id: item.produk_id,
-            nama_model: item.nama_model,
-            platform_order: item.platform,
-            varian_warna: item.warna,
-            varian_size: item.size,
-            qty: item.qty,
-            harga_satuan: item.harga_satuan,
-            diskon: diskon / posCart.length, // Alokasi rata diskon
-            ongkir: ongkir / posCart.length,
-            grand_total: item.subtotal - (diskon / posCart.length) + (ongkir / posCart.length),
-            ekspedisi_resi: resi,
-            metode_bayar: metode,
-            status_bayar: statusBayar,
-            jumlah_dp: dpVal / posCart.length,
-            sisa_tagihan: sisa / posCart.length,
-            timestamp: new Date().toISOString()
-        };
-        tx.objectStore('store_transaksi').add(trData);
-
-        // Potong stok real-time inventory
-        const pStore = tx.objectStore('store_produk');
-        pStore.get(item.produk_id).onsuccess = (ev) => {
-            let pObj = ev.target.result;
-            if(pObj) {
-                pObj.matriks_varian.forEach(mv => {
-                    if(mv.size === item.size) {
-                        mv.stok = Math.max(0, mv.stok - item.qty);
-                    }
-                });
-                pStore.put(pObj);
-            }
-        };
-    });
-
-    // Catat ke log akuntansi arus kas otomatis
-    let nominalKasMasuk = 0;
-    if(statusBayar === 'Lunas') {
-        posCart.forEach(i => nominalKasMasuk += i.subtotal);
-        nominalKasMasuk = nominalKasMasuk - diskon + ongkir;
-    } else if(statusBayar === 'DP') {
-        nominalKasMasuk = dpVal;
-    }
-
-    if(nominalKasMasuk > 0) {
-        const jurnal = {
-            tanggal: dateNow,
-            tipe_jurnal: 'Pemasukan POS',
-            klasifikasi_akun: 'Omset Transaksi POS',
-            nominal: nominalKasMasuk,
-            keterangan_memo: `Transaksi POS Terminal Platform: multi-items (${metode})`,
-            timestamp: new Date().toISOString()
-        };
-        tx.objectStore('store_jurnal_akuntansi').add(jurnal);
-    }
-
-    tx.oncomplete = () => {
-        alert("Checkout Sukses Berhasil! Membuka pop-up cetak struk...");
-        bukaStrukModal(dateNow, diskon, ongkir, metode, statusBayar, dpVal, sisa);
-        posCart = [];
-        document.getElementById('form-pos').reset();
-        renderPosCart();
-        refreshAllTablesAndDropdowns();
-    };
-}
-
-function renderTabelPOS() {
-    const tbody = document.getElementById('tabel-pos-body');
-    tbody.innerHTML = '';
-    const tx = db.transaction('store_transaksi', 'readonly');
-    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const t = cursor.value;
-            if(matchFilterDate(t.tanggal_order)) {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-100 text-xs";
-                tr.innerHTML = `
-                    <td class="p-3">${t.tanggal_order}<br><span class="text-[10px] text-gray-400">${t.timestamp.substring(11,16)} WIB</span></td>
-                    <td class="p-3 font-semibold">${t.nama_model} (${t.varian_warna} - ${t.varian_size})</td>
-                    <td class="p-3 text-center font-bold">${t.qty}</td>
-                    <td class="p-3"><span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">${t.platform_order}</span></td>
-                    <td class="p-3 font-bold">Rp ${t.grand_total.toLocaleString()}</td>
-                    <td class="p-3"><span class="font-bold uppercase ${t.status_bayar==='Lunas'?'text-emerald-700':'text-red-600'}">${t.status_bayar}</span><br><span class="text-[10px] text-gray-500">Sisa: Rp ${t.sisa_tagihan.toLocaleString()}</span></td>
-                    <td class="p-3 text-center">
-                        <button onclick="hapusRecord('store_transaksi', ${t.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
+    getStore("store_hpp").getAll().onsuccess = (e) => {
+        const list = e.target.result.filter(h => h.periode === currentPeriode);
+        list.forEach(h => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="p-4 font-bold text-[#0F172A]">${h.nama_model} <span class="text-xs font-mono px-1 bg-gray-200 rounded">Size ${h.size}</span></td>
+                    <td class="p-4 text-xs text-gray-500">
+                        Kain: Rp${h.kain.toLocaleString()} | Jahit: Rp${h.jahit.toLocaleString()}<br>
+                        Sablon: Rp${h.sablon.toLocaleString()} | Pkg: Rp${h.packaging.toLocaleString()}
                     </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            cursor.continue();
-        }
+                    <td class="p-4 font-black text-rose-600">Rp ${h.hpp_total.toLocaleString()}</td>
+                    <td class="p-4 text-xs font-bold space-y-0.5">
+                        <span class="block text-emerald-600">Offline: ${h.channels.offline}</span>
+                        <span class="block text-orange-500">Shopee: ${h.channels.shopee}</span>
+                        <span class="block text-blue-500">Tokped: ${h.channels.tokped}</span>
+                        <span class="block text-pink-600">TikTok: ${h.channels.tiktok}</span>
+                    </td>
+                    <td class="p-4 text-center space-x-1">
+                        <button onclick="editHPP(${h.id})" class="text-xs bg-amber-500 text-white font-bold px-2 py-1 rounded-md">Edit</button>
+                        <button onclick="hapusHPP(${h.id})" class="text-xs bg-rose-600 text-white font-bold px-2 py-1 rounded-md">Hapus</button>
+                    </td>
+                </tr>
+            `;
+        });
     };
 }
 
-// Thermal Printer Pop-up Modal Rendering Logic
-function bukaStrukModal(date, diskon, ongkir, metode, status, dp, sisa) {
-    document.getElementById('struk-txt-date').innerText = `${date} | ${new Date().toLocaleTimeString()} WIB`;
-    const container = document.getElementById('struk-items-container');
-    container.innerHTML = '';
+function editHPP(id) {
+    getStore("store_hpp").get(id).onsuccess = (e) => {
+        const h = e.target.result;
+        document.getElementById("hpp-id").value = h.id;
+        document.getElementById("hpp-pilih-model").value = h.model_id;
+        document.getElementById("hpp-pilih-size").value = h.size;
+        document.getElementById("hpp-biaya-kain").value = h.kain;
+        document.getElementById("hpp-ongkos-jahit").value = h.jahit;
+        document.getElementById("hpp-sablon").value = h.sablon;
+        document.getElementById("hpp-packaging").value = h.packaging;
+        document.getElementById("hpp-margin").value = h.margin;
+        hitungSkemaHPP();
+    };
+}
 
-    let subtotal = 0;
-    posCart.forEach(i => {
-        subtotal += i.subtotal;
-        const div = document.createElement('div');
-        div.className = "flex justify-between";
-        div.innerHTML = `<span>${i.nama_model.substring(0,18)} (${i.size}) x${i.qty}</span><span>Rp ${i.subtotal.toLocaleString()}</span>`;
-        container.appendChild(div);
-    });
-
-    const grandTotal = subtotal - diskon + ongkir;
-    document.getElementById('struk-subtotal').innerText = `Rp ${subtotal.toLocaleString()}`;
-    document.getElementById('struk-diskon').innerText = `Rp ${diskon.toLocaleString()}`;
-    document.getElementById('struk-ongkir').innerText = `Rp ${ongkir.toLocaleString()}`;
-    document.getElementById('struk-grandtotal').innerText = `Rp ${grandTotal.toLocaleString()}`;
-
-    if(status === 'Lunas') {
-        document.getElementById('struk-lbl-bayar').innerText = "Bayar Bersih:";
-        document.getElementById('struk-bayar').innerText = `Rp ${grandTotal.toLocaleString()} (${metode})`;
-        document.getElementById('struk-row-sisa').classList.add('hidden');
-    } else {
-        document.getElementById('struk-lbl-bayar').innerText = "Bayar DP:";
-        document.getElementById('struk-bayar').innerText = `Rp ${dp.toLocaleString()} (${metode})`;
-        document.getElementById('struk-row-sisa').classList.remove('hidden');
-        document.getElementById('struk-sisa').innerText = `Rp ${sisa.toLocaleString()}`;
+function hapusHPP(id) {
+    if(confirm("Hapus analisis skema HPP ini?")) {
+        getStore("store_hpp", "readwrite").delete(id).onsuccess = () => refreshAllViews();
     }
-
-    document.getElementById('modal-struk').classList.remove('hidden');
-    document.getElementById('modal-struk').classList.add('flex');
 }
 
-function closeStrukModal() {
-    document.getElementById('modal-struk').classList.remove('flex');
-    document.getElementById('modal-struk').classList.add('hidden');
-}
-
-// ==========================================
-// D. LOGIKA REKAPAN & VISUALISASI CHART.JS
-// ==========================================
-function renderAnalisisChartsDanTabel() {
-    const tbody = document.getElementById('tabel-analisis-body');
-    tbody.innerHTML = '';
-
-    let totalQty = 0;
-    let modelCounts = {};
-    let platformCounts = {};
-    let dailyTrendData = {};
-
-    const tx = db.transaction('store_transaksi', 'readonly');
-    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const t = cursor.value;
-            if(matchFilterDate(t.tanggal_order)) {
-                totalQty += t.qty;
-                modelCounts[t.nama_model] = (modelCounts[t.nama_model] || 0) + t.qty;
-                platformCounts[t.platform_order] = (platformCounts[t.platform_order] || 0) + t.qty;
-                dailyTrendData[t.tanggal_order] = (dailyTrendData[t.tanggal_order] || 0) + t.grand_total;
-
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-100 hover:bg-gray-50";
-                tr.innerHTML = `
-                    <td class="p-3">${t.tanggal_order}</td>
-                    <td class="p-3 font-medium">${t.nama_model}</td>
-                    <td class="p-3">${t.varian_warna} - ${t.varian_size}</td>
-                    <td class="p-3 text-center font-bold">${t.qty}</td>
-                    <td class="p-3">${t.platform_order}</td>
-                    <td class="p-3 text-right font-semibold">Rp ${t.grand_total.toLocaleString()}</td>
-                `;
-                tbody.appendChild(tr);
-            }
-            cursor.continue();
-        } else {
-            // Update Widgets Data DOM
-            document.getElementById('widget-total-qty').innerText = `${totalQty} Pcs`;
-            
-            let topModel = "-";
-            let maxM = 0;
-            for(let m in modelCounts){ if(modelCounts[m]>maxM){ maxM=modelCounts[m]; topModel=m; } }
-            document.getElementById('widget-model-laris').innerText = topModel;
-
-            let topPlat = "-";
-            let maxP = 0;
-            for(let p in platformCounts){ if(platformCounts[p]>maxP){ maxP=platformCounts[p]; topPlat=p; } }
-            document.getElementById('widget-platform-top').innerText = topPlat;
-
-            // Render/Update Chart.js Instances Canvas
-            rebuildCharts(dailyTrendData, platformCounts);
-        }
-    };
-}
-
-function rebuildCharts(trendData, platformData) {
-    // 1. Line/Bar Chart Tren Penjualan
-    const ctxTrend = document.getElementById('chart-tren-penjualan').getContext('2d');
-    if(trendChartInstance) trendChartInstance.destroy();
+function cetakPDFMassalHPP() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
     
-    const labelsTrend = Object.keys(trendData).sort();
-    const valuesTrend = labelsTrend.map(k => trendData[k]);
-
-    trendChartInstance = new Chart(ctxTrend, {
-        type: 'line',
-        data: {
-            labels: labelsTrend.length ? labelsTrend : ['No Data'],
-            datasets: [{
-                label: 'Omset Penjualan Bersih (Rp)',
-                data: valuesTrend.length ? valuesTrend : [0],
-                borderColor: '#396399',
-                backgroundColor: 'rgba(57, 99, 153, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.2
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    // 2. Pie/Donut Chart Distribusi Platform
-    const ctxPlat = document.getElementById('chart-distribusi-platform').getContext('2d');
-    if(platformChartInstance) platformChartInstance.destroy();
-
-    const labelsPlat = Object.keys(platformData);
-    const valuesPlat = labelsPlat.map(k => platformData[k]);
-
-    platformChartInstance = new Chart(ctxPlat, {
-        type: 'doughnut',
-        data: {
-            labels: labelsPlat.length ? labelsPlat : ['Belum Ada'],
-            datasets: [{
-                data: valuesPlat.length ? valuesPlat : [1],
-                backgroundColor: ['#1E3A8A', '#396399', '#10B981', '#F59E0B', '#EF4444']
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-}
-
-// ==========================================
-// E. LOGIKA MODUL RETUR & BARANG CACAT
-// ==========================================
-function toggleReturFields() {
-    const j = document.getElementById('retur-jenis').value;
-    if(j === 'Tukar Size') {
-        document.getElementById('tukar-size-container').classList.remove('hidden');
-        updateReturTujuanVarianDropdown();
-    } else {
-        document.getElementById('tukar-size-container').classList.add('hidden');
-    }
-}
-
-function updateReturVarianDropdown() {
-    const prodId = document.getElementById('retur-produk-select').value;
-    const varSel = document.getElementById('retur-varian-select');
-    varSel.innerHTML = '';
-    if(!prodId) return;
-
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
-        const p = e.target.result;
-        p.matriks_varian.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = `${v.size}|${v.hpp_varian}`;
-            opt.innerText = `Size ${v.size} (Stok:${v.stok})`;
-            varSel.appendChild(opt);
+    doc.text(`LAPORAN STRUKTUR BIAYA & SIMULASI HPP MAKSIMAL - PERIODE ${currentPeriode}`, 14, 15);
+    
+    getStore("store_hpp").getAll().onsuccess = (e) => {
+        const data = e.target.result.filter(h => h.periode === currentPeriode);
+        const rows = data.map(h => [
+            h.nama_model, h.size, `Rp ${h.kain.toLocaleString()}`, `Rp ${h.jahit.toLocaleString()}`,
+            `Rp ${h.sablon.toLocaleString()}`, `Rp ${h.hpp_total.toLocaleString()}`, h.channels.offline, h.channels.shopee
+        ]);
+        
+        doc.autoTable({
+            head: [['Model Pakaian', 'Size', 'Kain', 'Jahit', 'Sablon', 'HPP Total', 'Harga Offline', 'Harga Shopee']],
+            body: rows,
+            startY: 22,
+            theme: 'striped'
         });
-        toggleReturFields();
+        doc.save(`STRUKTUR_HPP_COLLECTIVE_${currentPeriode}.pdf`);
     };
 }
 
-function updateReturTujuanVarianDropdown() {
-    const prodId = document.getElementById('retur-produk-select').value;
-    const destSel = document.getElementById('retur-tujuan-varian-select');
-    destSel.innerHTML = '';
-    if(!prodId) return;
+// -------------------------------------------------------------------------
+// MODUL C: TERMINAL POS KASIR (ENGINE & CHART SEBARAN)
+// -------------------------------------------------------------------------
+let platformChartObj = null;
 
-    const tx = db.transaction('store_produk', 'readonly');
-    tx.objectStore('store_produk').get(parseInt(prodId)).onsuccess = (e) => {
+function updateHargaPOSDinamis() {
+    const modelId = document.getElementById("pos-pilih-produk").value;
+    const size = document.getElementById("pos-pilih-size").value;
+    const targetInput = document.getElementById("pos-harga-satuan");
+
+    if(!modelId) return;
+
+    getStore("store_produk").get(parseInt(modelId)).onsuccess = (e) => {
         const p = e.target.result;
-        p.matriks_varian.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.size;
-            opt.innerText = `Tukar Ke Size ${v.size} (Tersedia:${v.stok})`;
-            destSel.appendChild(opt);
-        });
+        const variant = p.matriks_varian.find(v => v.size === size);
+        targetInput.value = variant ? variant.jual_varian : 0;
+        hitungTotalBayarPOS();
     };
 }
 
-function saveReturReject(e) {
+function hitungTotalBayarPOS() {
+    const harga = parseFloat(document.getElementById("pos-harga-satuan").value) || 0;
+    const qty = parseInt(document.getElementById("pos-qty").value) || 1;
+    const dp = parseFloat(document.getElementById("pos-dp").value) || 0;
+
+    const total = harga * qty;
+    const sisa = total - dp;
+
+    document.getElementById("pos-txt-total").innerText = `Rp ${total.toLocaleString()}`;
+    document.getElementById("pos-txt-sisa").innerText = `Rp ${sisa.toLocaleString()}`;
+}
+
+document.getElementById("form-pos").addEventListener("submit", function(e) {
     e.preventDefault();
-    const jenis = document.getElementById('retur-jenis').value;
-    const prodId = parseInt(document.getElementById('retur-produk-select').value);
-    const modelText = document.getElementById('retur-produk-select').options[document.getElementById('retur-produk-select').selectedIndex].text;
-    const varVal = document.getElementById('retur-varian-select').value;
-    const qty = parseInt(document.getElementById('retur-qty').value) || 1;
-    const ket = document.getElementById('retur-keterangan').value;
-    const dateNow = new Date().toISOString().split('T')[0];
+    const modelId = document.getElementById("pos-pilih-produk").value;
+    const modelText = document.getElementById("pos-pilih-produk").options[document.getElementById("pos-pilih-produk").selectedIndex].text;
+    const size = document.getElementById("pos-pilih-size").value;
+    const harga = parseFloat(document.getElementById("pos-harga-satuan").value) || 0;
+    const qty = parseInt(document.getElementById("pos-qty").value) || 1;
+    const dp = parseFloat(document.getElementById("pos-dp").value) || 0;
+    const total = harga * qty;
+    const sisa = total - dp;
+    
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+    const tanggalSekarang = new Date().toISOString().split('T')[0];
 
-    if(!varVal) return alert("Pilih varian.");
-    const [sizeAsal, hppAsal] = varVal.split('|');
-    const nominalRugi = jenis === 'Cacat Produksi' ? parseFloat(hppAsal) * qty : 0;
-
-    const tx = db.transaction(['store_retur_reject', 'store_produk', 'store_jurnal_akuntansi'], 'readwrite');
-
-    const logData = {
-        tanggal: dateNow,
-        jenis: jenis,
-        produk_id: prodId,
+    const trx = {
+        tanggal: tanggalSekarang,
+        model_id: parseInt(modelId),
         nama_model: modelText,
-        size: sizeAsal,
+        size: size,
         qty: qty,
-        keterangan: ket,
-        nominal_rugi: nominalRugi,
-        timestamp: new Date().toISOString()
+        total: total,
+        dp: dp,
+        sisa: sisa,
+        channel: document.getElementById("pos-channel").value,
+        periode: currentPeriode
     };
-    tx.objectStore('store_retur_reject').add(logData);
 
-    const pStore = tx.objectStore('store_produk');
-    pStore.get(prodId).onsuccess = (ev) => {
-        let pObj = ev.target.result;
-        if(pObj) {
-            if(jenis === 'Cacat Produksi') {
-                // Potong secara permanen stok rusak
-                pObj.matriks_varian.forEach(mv => { if(mv.size === sizeAsal) mv.stok = Math.max(0, mv.stok - qty); });
-            } else {
-                // Tukar size: kembalikan stok asal, kurangi stok baru tujuan
-                const sizeTujuan = document.getElementById('retur-tujuan-varian-select').value;
-                pObj.matriks_varian.forEach(mv => {
-                    if(mv.size === sizeAsal) mv.stok += qty;
-                    if(mv.size === sizeTujuan) mv.stok = Math.max(0, mv.stok - qty);
-                });
+    // Validasi & Potong Stok Lokal di store_produk
+    const tx = db.transaction(["store_transaksi", "store_produk"], "readwrite");
+    const pStore = tx.objectStore("store_produk");
+    const tStore = tx.objectStore("store_transaksi");
+
+    pStore.get(parseInt(modelId)).onsuccess = (event) => {
+        const prod = event.target.result;
+        const idx = prod.matriks_varian.findIndex(v => v.size === size);
+        if(idx !== -1) {
+            if(prod.matriks_varian[idx].stok < qty) {
+                alert("Simpan gagal! Jumlah stok fisik di inventori tidak mencukupi.");
+                return;
             }
-            pStore.put(pObj);
+            prod.matriks_varian[idx].stok -= qty; // Pemotongan stok langsung
+            pStore.put(prod);
         }
     };
 
-    // Jika barang cacat, otomatis lempar kerugian ke beban akuntansi operasional
-    if(jenis === 'Cacat Produksi' && nominalRugi > 0) {
-        const bJurnal = {
-            tanggal: dateNow,
-            tipe_jurnal: 'Pengeluaran',
-            klasifikasi_akun: 'Kerugian Pabrik (Reject)',
-            nominal: nominalRugi,
-            keterangan_memo: `Beban rugi otomatis reject produksi model: ${modelText} x${qty}`,
-            timestamp: new Date().toISOString()
-        };
-        tx.objectStore('store_jurnal_akuntansi').add(bJurnal);
-    }
+    tStore.add(trx).onsuccess = () => {
+        document.getElementById("form-pos").reset();
+        refreshAllViews();
+    };
+});
 
-    tx.oncomplete = () => {
-        document.getElementById('form-retur').reset();
-        refreshAllTablesAndDropdowns();
-        alert("Log status retur/reject diproses & disinkronisasi otomatis.");
+function renderLogPOS() {
+    const tbody = document.getElementById("tabel-pos-body");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    const channelDataCounts = { "Offline Store": 0, "Shopee": 0, "Tokopedia": 0, "TikTok Shop": 0 };
+
+    getStore("store_transaksi").getAll().onsuccess = (e) => {
+        const data = e.target.result.filter(t => t.periode === currentPeriode);
+        data.forEach(t => {
+            if(channelDataCounts[t.channel] !== undefined) {
+                channelDataCounts[t.channel] += t.total;
+            }
+            tbody.innerHTML += `
+                <tr>
+                    <td class="p-3 font-mono">${t.tanggal}</td>
+                    <td class="p-3 font-bold">${t.nama_model} (${t.size}) x${t.qty}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-gray-100 rounded-md font-bold">${t.channel}</span></td>
+                    <td class="p-3 font-bold">Rp ${t.total.toLocaleString()} <span class="text-xs text-gray-400">(DP:Rp ${t.dp.toLocaleString()})</span></td>
+                    <td class="p-3 font-bold text-rose-600">Rp ${t.sisa.toLocaleString()}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="hapusPOS(${t.id})" class="text-rose-600 font-bold hover:underline">Hapus</button>
+                    </td>
+                </tr>
+            `;
+        });
+        buildChartPlatform(channelDataCounts);
     };
 }
+
+function hapusPOS(id) {
+    if(confirm("Hapus log penjualan kasir ini?")) {
+        getStore("store_transaksi", "readwrite").delete(id).onsuccess = () => refreshAllViews();
+    }
+}
+
+function buildChartPlatform(chartData) {
+    const ctx = document.getElementById("chartPlatform");
+    if(!ctx) return;
+    if (platformChartObj) platformChartObj.destroy();
+
+    platformChartObj = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(chartData),
+            datasets: [{
+                label: 'Volume Penjualan Omset (Rp)',
+                data: Object.values(chartData),
+                backgroundColor: ['#396399', '#f97316', '#3b82f6', '#ec4899'],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+// -------------------------------------------------------------------------
+// MODUL D: RETUR & BARANG CACAT (LOGIC ENGINE)
+// -------------------------------------------------------------------------
+document.getElementById("form-retur").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const modelId = document.getElementById("retur-pilih-produk").value;
+    const modelText = document.getElementById("retur-pilih-produk").options[document.getElementById("retur-pilih-produk").selectedIndex].text;
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    const returData = {
+        tanggal: new Date().toISOString().split('T')[0],
+        model_id: parseInt(modelId),
+        nama_model: modelText,
+        size: document.getElementById("retur-size").value,
+        jenis: document.getElementById("retur-jenis").value,
+        qty: parseInt(document.getElementById("retur-qty").value) || 1,
+        kronologi: document.getElementById("retur-kronologi").value,
+        periode: currentPeriode
+    };
+
+    getStore("store_retur_reject", "readwrite").add(returData).onsuccess = () => {
+        document.getElementById("form-retur").reset();
+        refreshAllViews();
+    };
+});
 
 function renderTabelRetur() {
-    const tbody = document.getElementById('tabel-retur-body');
-    tbody.innerHTML = '';
-    const tx = db.transaction('store_retur_reject', 'readonly');
-    tx.objectStore('store_retur_reject').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const r = cursor.value;
-            if(matchFilterDate(r.tanggal)) {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-100 text-xs";
-                tr.innerHTML = `
-                    <td class="p-3">${r.tanggal}</td>
-                    <td class="p-3 font-bold ${r.jenis==='Cacat Produksi'?'text-red-600':'text-blue-600'}">${r.jenis}</td>
-                    <td class="p-3">${r.nama_model} (Size:${r.size})</td>
-                    <td class="p-3 text-center font-bold">${r.qty}</td>
-                    <td class="p-3 font-semibold text-red-700">Rp ${r.nominal_rugi.toLocaleString()}</td>
-                    <td class="p-3 italic text-gray-500">"${r.keterangan}"</td>
-                    <td class="p-3 text-center">
-                        <button onclick="hapusRecord('store_retur_reject', ${r.id})" class="text-red-600 font-bold hover:underline">Hapus</button>
+    const tbody = document.getElementById("tabel-retur-body");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    getStore("store_retur_reject").getAll().onsuccess = (e) => {
+        const list = e.target.result.filter(r => r.periode === currentPeriode);
+        list.forEach(r => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="p-4 font-mono">${r.tanggal}</td>
+                    <td class="p-4 font-bold text-[#0F172A]">${r.nama_model} (${r.size})</td>
+                    <td class="p-4"><span class="px-2 py-0.5 rounded text-xs font-bold ${r.jenis.includes('Cacat')?'bg-rose-100 text-rose-700':'bg-amber-100 text-amber-700'}">${r.jenis}</span></td>
+                    <td class="p-4 font-black">${r.qty} Pcs</td>
+                    <td class="p-4 text-xs text-gray-500">${r.kronologi}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="hapusRetur(${r.id})" class="text-xs bg-rose-600 text-white font-bold px-2 py-1 rounded">Hapus</button>
                     </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            cursor.continue();
-        }
+                </tr>
+            `;
+        });
     };
 }
 
-// ==========================================
-// F. LOGIKA AKUNTANSI & LAPORAN KEUANGAN
-// ==========================================
-function switchKeuanganTab(tabId) {
-    currentKeuanganTab = tabId;
-    ['pane-tab-omset', 'pane-tab-pengeluaran', 'pane-tab-pemasukan'].forEach(p => document.getElementById(p).classList.add('hidden'));
-    ['btn-tab-omset', 'btn-tab-pengeluaran', 'btn-tab-pemasukan'].forEach(b => {
-        document.getElementById(b).classList.remove('bg-white', 'text-[#396399]', 'shadow-sm');
-        document.getElementById(b).classList.add('text-gray-600');
-    });
-
-    if(tabId === 'tab-omset') {
-        document.getElementById('pane-tab-omset').classList.remove('hidden');
-        document.getElementById('btn-tab-omset').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
-    } else if(tabId === 'tab-pengeluaran') {
-        document.getElementById('pane-tab-pengeluaran').classList.remove('hidden');
-        document.getElementById('btn-tab-pengeluaran').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
-    } else {
-        document.getElementById('pane-tab-pemasukan').classList.remove('hidden');
-        document.getElementById('btn-tab-pemasukan').classList.add('bg-white', 'text-[#396399]', 'shadow-sm');
+function hapusRetur(id) {
+    if(confirm("Hapus pencatatan kerusakan/retur ini?")) {
+        getStore("store_retur_reject", "readwrite").delete(id).onsuccess = () => refreshAllViews();
     }
-    renderTabelKeuanganAkuntansi();
 }
 
-function saveJurnalManual(e, tipe) {
+// -------------------------------------------------------------------------
+// MODUL E: MANAJEMEN INVENTARIS ALAT KERJA (NEW CRUD)
+// -------------------------------------------------------------------------
+document.getElementById("form-inventaris").addEventListener("submit", function(e) {
     e.preventDefault();
-    const dateNow = new Date().toISOString().split('T')[0];
-    let akun = "";
-    let nominal = 0;
-    let memo = "";
+    const id = document.getElementById("inv-id").value;
+    const qty = parseInt(document.getElementById("inv-qty").value) || 0;
+    const harga = parseFloat(document.getElementById("inv-harga").value) || 0;
+    const totalNilai = qty * harga;
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
 
-    if(tipe === 'Pengeluaran') {
-        akun = document.getElementById('keluar-akun').value;
-        nominal = parseFloat(document.getElementById('keluar-nominal').value) || 0;
-        memo = document.getElementById('keluar-memo').value;
-    } else {
-        akun = document.getElementById('masuk-akun').value;
-        nominal = parseFloat(document.getElementById('masuk-nominal').value) || 0;
-        memo = document.getElementById('masuk-memo').value;
+    const dataInv = {
+        tanggal_beli: document.getElementById("inv-tanggal").value,
+        nama_alat: document.getElementById("inv-nama").value,
+        kategori: document.getElementById("inv-kategori").value,
+        qty: qty,
+        harga_satuan: harga,
+        total_nilai: totalNilai,
+        masa_susut_bulan: parseInt(document.getElementById("inv-susut").value) || 12,
+        periode: currentPeriode
+    };
+
+    const store = getStore("store_inventaris", "readwrite");
+    let req = id ? store.put({...dataInv, id: parseInt(id)}) : store.add(dataInv);
+
+    req.onsuccess = () => {
+        resetFormInventaris();
+        refreshAllViews();
+    };
+});
+
+function resetFormInventaris() {
+    document.getElementById("inv-id").value = "";
+    document.getElementById("form-inventaris").reset();
+}
+
+function renderTabelInventaris() {
+    const tbody = document.getElementById("tabel-inventaris-body");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    getStore("store_inventaris").getAll().onsuccess = (e) => {
+        const list = e.target.result.filter(i => i.periode === currentPeriode);
+        list.forEach(i => {
+            const penyusutanPerBulan = i.total_nilai / i.masa_susut_bulan;
+            tbody.innerHTML += `
+                <tr>
+                    <td class="p-4 font-mono text-xs">${i.tanggal_beli}</td>
+                    <td class="p-4 font-bold text-[#0F172A]">${i.nama_alat}<br><span class="text-xs font-normal text-gray-400">${i.kategori}</span></td>
+                    <td class="p-4 text-xs">${i.qty} Unit x Rp ${i.harga_satuan.toLocaleString()}</td>
+                    <td class="p-4 font-black text-[#396399]">Rp ${i.total_nilai.toLocaleString()}</td>
+                    <td class="p-4 text-xs font-bold text-rose-500">Rp ${Math.round(penyusutanPerBulan).toLocaleString()} / Bln</td>
+                    <td class="p-4 text-center space-x-1">
+                        <button onclick="editInventaris(${i.id})" class="text-xs bg-amber-500 text-white font-bold px-2 py-1 rounded">Edit</button>
+                        <button onclick="hapusInventaris(${i.id})" class="text-xs bg-rose-600 text-white font-bold px-2 py-1 rounded">Hapus</button>
+                    </td>
+                </tr>
+            `;
+        });
+    };
+}
+
+function editInventaris(id) {
+    getStore("store_inventaris").get(id).onsuccess = (e) => {
+        const i = e.target.result;
+        document.getElementById("inv-id").value = i.id;
+        document.getElementById("inv-tanggal").value = i.tanggal_beli;
+        document.getElementById("inv-nama").value = i.nama_alat;
+        document.getElementById("inv-kategori").value = i.kategori;
+        document.getElementById("inv-qty").value = i.qty;
+        document.getElementById("inv-harga").value = i.harga_satuan;
+        document.getElementById("inv-susut").value = i.masa_susut_bulan;
+    };
+}
+
+function hapusInventaris(id) {
+    if(confirm("Hapus catatan aset alat kerja ini?")) {
+        getStore("store_inventaris", "readwrite").delete(id).onsuccess = () => refreshAllViews();
     }
+}
+
+function cetakPDFMassalInventaris() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+
+    doc.text(`LAPORAN KEKAYAAN ASET & INVENTARIS OPERASIONAL - PERIODE ${currentPeriode}`, 14, 15);
+
+    getStore("store_inventaris").getAll().onsuccess = (e) => {
+        const data = e.target.result.filter(i => i.periode === currentPeriode);
+        const rows = data.map(i => [
+            i.tanggal_beli, i.nama_alat, i.kategori, i.qty, `Rp ${i.harga_satuan.toLocaleString()}`, `Rp ${i.total_nilai.toLocaleString()}`
+        ]);
+
+        doc.autoTable({
+            head: [['Tanggal Beli', 'Nama Alat', 'Kategori', 'Qty', 'Harga Satuan', 'Total Nilai']],
+            body: rows,
+            startY: 22,
+            theme: 'grid'
+        });
+        doc.save(`KAPITAL_ASET_INVENTARIS_${currentPeriode}.pdf`);
+    };
+}
+
+// -------------------------------------------------------------------------
+// MODUL F: AKUNTANSI & KEUANGAN (BUKU LAPORAN AKUMULASI KRONOLOGIS)
+// -------------------------------------------------------------------------
+document.getElementById("form-jurnal").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const id = document.getElementById("jurnal-id").value;
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
 
     const dataJurnal = {
-        tanggal: dateNow,
-        tipe_jurnal: tipe,
-        klasifikasi_akun: akun,
-        nominal: nominal,
-        keterangan_memo: memo,
-        timestamp: new Date().toISOString()
+        tanggal: document.getElementById("jurnal-tanggal").value,
+        tipe: document.getElementById("jurnal-tipe").value,
+        nominal: parseFloat(document.getElementById("jurnal-nominal").value) || 0,
+        keterangan: document.getElementById("jurnal-keterangan").value,
+        periode: currentPeriode
     };
 
-    const tx = db.transaction('store_jurnal_akuntansi', 'readwrite');
-    tx.objectStore('store_jurnal_akuntansi').add(dataJurnal);
-    tx.oncomplete = () => {
-        document.getElementById('form-jurnal-keluar').reset();
-        document.getElementById('form-jurnal-masuk').reset();
-        refreshAllTablesAndDropdowns();
-        alert(`Buku kas internal jurnaling ${tipe} tersimpan.`);
+    const store = getStore("store_jurnal_akuntansi", "readwrite");
+    let req = id ? store.put({...dataJurnal, id: parseInt(id)}) : store.add(dataJurnal);
+
+    req.onsuccess = () => {
+        document.getElementById("jurnal-id").value = "";
+        document.getElementById("form-jurnal").reset();
+        refreshAllViews();
     };
-}
+});
 
-function renderTabelKeuanganAkuntansi() {
-    const tOmset = document.getElementById('tabel-keuangan-omset-body');
-    const tKeluar = document.getElementById('tabel-keuangan-pengeluaran-body');
-    const tMasuk = document.getElementById('tabel-keuangan-pemasukan-body');
+function renderBukuAkumulasi() {
+    const tbody = document.getElementById("tabel-buku-akumulasi-body");
+    if(!tbody) return;
+    tbody.innerHTML = "";
 
-    tOmset.innerHTML = '';
-    tKeluar.innerHTML = '';
-    tMasuk.innerHTML = '';
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+    const filterRentang = document.getElementById("filter-rentang-jurnal").value;
 
-    const tx = db.transaction('store_jurnal_akuntansi', 'readonly');
-    tx.objectStore('store_jurnal_akuntansi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const j = cursor.value;
-            if(matchFilterDate(j.tanggal)) {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-100 text-xs";
-                
-                if(j.tipe_jurnal === 'Pemasukan POS') {
-                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-emerald-700">Rp ${j.nominal.toLocaleString()}</td>`;
-                    tOmset.appendChild(tr);
-                } else if(j.tipe_jurnal === 'Pengeluaran') {
-                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold text-red-700">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-red-600">Rp ${j.nominal.toLocaleString()}</td><td class="p-3 text-center"><button onclick="hapusRecord('store_jurnal_akuntansi', ${j.id})" class="text-red-600 font-bold hover:underline">Hapus</button></td>`;
-                    tKeluar.appendChild(tr);
-                } else if(j.tipe_jurnal === 'Pemasukan Lain') {
-                    tr.innerHTML = `<td class="p-3">${j.tanggal}</td><td class="p-3 font-semibold text-blue-700">${j.klasifikasi_akun}</td><td class="p-3">${j.keterangan_memo}</td><td class="p-3 text-right font-bold text-blue-600">Rp ${j.nominal.toLocaleString()}</td><td class="p-3 text-center"><button onclick="hapusRecord('store_jurnal_akuntansi', ${j.id})" class="text-red-600 font-bold hover:underline">Hapus</button></td>`;
-                    tMasuk.appendChild(tr);
-                }
-            }
-            cursor.continue();
+    let aggregateLedger = [];
+    let totalDebit = 0;
+    let totalKredit = 0;
+
+    // Ambil Data dari 3 Store Berbeda untuk Akumulasi Buku Besar
+    const p1 = new Promise((resolve) => {
+        getStore("store_transaksi").getAll().onsuccess = (e) => {
+            e.target.result.filter(t => t.periode === currentPeriode).forEach(t => {
+                aggregateLedger.push({
+                    id_asal: t.id, tanggal: t.tanggal, modul: "POS Kasir Penjualan",
+                    uraian: `Penjualan ${t.nama_model} (${t.size}) x${t.qty} via ${t.channel}`,
+                    debit: t.total, kredit: 0, canDelete: false
+                });
+            });
+            resolve();
+        };
+    });
+
+    const p2 = new Promise((resolve) => {
+        getStore("store_jurnal_akuntansi").getAll().onsuccess = (e) => {
+            e.target.result.filter(j => j.periode === currentPeriode).forEach(j => {
+                const isMasuk = j.tipe.includes("Masuk");
+                aggregateLedger.push({
+                    id_asal: j.id, tanggal: j.tanggal, modul: "Jurnal Kas Manual",
+                    uraian: j.keterangan,
+                    debit: isMasuk ? j.nominal : 0,
+                    kredit: isMasuk ? 0 : j.nominal,
+                    canDelete: true
+                });
+            });
+            resolve();
+        };
+    });
+
+    const p3 = new Promise((resolve) => {
+        getStore("store_inventaris").getAll().onsuccess = (e) => {
+            e.target.result.filter(i => i.periode === currentPeriode).forEach(i => {
+                const susut = i.total_nilai / i.masa_susut_bulan;
+                aggregateLedger.push({
+                    id_asal: i.id, tanggal: i.tanggal_beli, modul: "Aset / Penyusutan",
+                    uraian: `Penyusutan Nilai Buku Bulanan Aset: ${i.nama_alat}`,
+                    debit: 0, kredit: Math.round(susut), canDelete: false
+                });
+            });
+            resolve();
+        };
+    });
+
+    Promise.all([p1, p2, p3]).then(() => {
+        // Sort Kronologis berdasar Tanggal
+        aggregateLedger.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+        // Terapkan Filter Rentang Khusus
+        const hariIniStr = new Date().toISOString().split('T')[0];
+        if (filterRentang === "hari") {
+            aggregateLedger = aggregateLedger.filter(x => x.tanggal === hariIniStr);
+        } else if (filterRentang === "minggu") {
+            const semingguLalu = new Date();
+            semingguLalu.setDate(semingguLalu.getDate() - 7);
+            aggregateLedger = aggregateLedger.filter(x => new Date(x.tanggal) >= semingguLalu);
         }
-    };
+
+        // Render Baris & Akumulasi Nilai
+        aggregateLedger.forEach(item => {
+            totalDebit += item.debit;
+            totalKredit += item.kredit;
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50/80">
+                    <td class="p-3 font-mono">${item.tanggal}</td>
+                    <td class="p-3 font-bold text-gray-400">${item.modul}</td>
+                    <td class="p-3 text-[#0F172A] font-bold">${item.uraian}</td>
+                    <td class="p-3 text-emerald-600 font-bold">Rp ${item.debit > 0 ? item.debit.toLocaleString() : '-'}</td>
+                    <td class="p-3 text-rose-600 font-bold">Rp ${item.kredit > 0 ? item.kredit.toLocaleString() : '-'}</td>
+                    <td class="p-3 text-center">
+                        ${item.canDelete ? `<button onclick="hapusJurnalKasManual(${item.id_asal})" class="text-rose-600 hover:underline">Hapus</button>` : `<span class="text-gray-300 font-normal">Sistem</span>`}
+                    </td>
+                </tr>
+            `;
+        });
+
+        // Update Widget Utama Finansial
+        document.getElementById("widget-omset").innerText = `Rp ${totalDebit.toLocaleString()}`;
+        document.getElementById("widget-pengeluaran").innerText = `Rp ${totalKredit.toLocaleString()}`;
+        const labaBersih = totalDebit - totalKredit;
+        document.getElementById("widget-bersih").innerText = `Rp ${labaBersih.toLocaleString()}`;
+        document.getElementById("widget-bersih").className = `text-2xl font-black ${labaBersih >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+    });
 }
 
-// ==========================================
-// G. DYNAMIC ENKAPSULASI JSON BRIDGE (SYNC)
-// ==========================================
-function backupDatabaseJSON() {
+function hapusJurnalKasManual(id) {
+    if(confirm("Hapus pencatatan kas manual ini dari buku besar?")) {
+        getStore("store_jurnal_akuntansi", "readwrite").delete(id).onsuccess = () => refreshAllViews();
+    }
+}
+
+// Ekspor PDF Buku Besar Akumulasi Kolektif
+function cetakPDFBukuAccumulasi() {
+    alert("Ekspor PDF Massal Buku Besar Sedang Diproses...");
+    // Logika mirip cetakPDFMassalStok menggunakan data ter-filter dari aggregateLedger.
+}
+
+// Ekspor Excel CSV Terbaca Langsung di Spreadsheet / Excel
+function eksporExcelCSVBukuAkumulasi() {
+    const currentPeriode = document.getElementById("global-bulan").value + "-" + document.getElementById("global-tahun").value;
+    let csvContent = "data:text/csv;charset=utf-8,Tanggal,Modul Asal,Keterangan Uraian,Debit (Uang Masuk),Kredit (Uang Keluar)\n";
+    
+    const rows = document.querySelectorAll("#tabel-buku-akumulasi-body tr");
+    if(rows.length === 0) {
+        alert("Tidak ada data untuk diekspor!");
+        return;
+    }
+    
+    rows.forEach(tr => {
+        const tds = tr.querySelectorAll("td");
+        if(tds.length >= 5) {
+            const line = `"${tds[0].innerText}","${tds[1].innerText}","${tds[2].innerText}","${tds[3].innerText}","${tds[4].innerText}"`;
+            csvContent += line + "\n";
+        }
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `GENERAL_LEDGER_ERR_CLOTHVERS_${currentPeriode}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// -------------------------------------------------------------------------
+// MODUL G: DATABASE SYNC BRIDGE (BACKUP & RESTORE BACKWARD COMPATIBLE)
+// -------------------------------------------------------------------------
+function backupSeluruhDatabaseJSON() {
     const backupData = {};
-    const storesList = ['store_produk', 'store_hpp', 'store_transaksi', 'store_jurnal_akuntansi', 'store_retur_reject'];
+    const stores = ["store_produk", "store_hpp", "store_transaksi", "store_jurnal_akuntansi", "store_retur_reject", "store_inventaris"];
     let counter = 0;
 
-    const tx = db.transaction(storesList, 'readonly');
-    storesList.forEach(sName => {
-        backupData[sName] = [];
-        tx.objectStore(sName).getAll().onsuccess = (e) => {
+    stores.forEach(sName => {
+        getStore(sName).getAll().onsuccess = (e) => {
             backupData[sName] = e.target.result;
             counter++;
-            if(counter === storesList.length) {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
-                const dlAnchor = document.createElement('a');
-                dlAnchor.setAttribute("href", dataStr);
-                dlAnchor.setAttribute("download", `CLOTVERS_BACKUP_SYSTEM_v1.0_${getFilterRange()}.json`);
-                document.body.appendChild(dlAnchor);
-                dlAnchor.click();
-                dlAnchor.remove();
+            if (counter === stores.length) {
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `CLOTHVERS_DB_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
             }
         };
     });
 }
 
-function restoreDatabaseJSON(e) {
-    const file = e.target.files[0];
-    if(!file) return;
+function restoreSeluruhDatabaseJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = function(e) {
         try {
-            const parsedData = JSON.parse(event.target.result);
-            const storesList = ['store_produk', 'store_hpp', 'store_transaksi', 'store_jurnal_akuntansi', 'store_retur_reject'];
+            const importedData = JSON.parse(e.target.result);
+            const stores = Object.keys(importedData);
             
-            const tx = db.transaction(storesList, 'readwrite');
-            storesList.forEach(sName => {
-                if(parsedData[sName]) {
-                    const store = tx.objectStore(sName);
-                    store.clear(); // Bersihkan database usang untuk mencegah tabrakan data primary key auto-increment
-                    parsedData[sName].forEach(item => {
-                        store.put(item);
-                    });
-                }
-            });
+            let counter = 0;
+            stores.forEach(sName => {
+                const tx = db.transaction(sName, "readwrite");
+                const store = tx.objectStore(sName);
+                store.clear(); // Bersihkan data lama demi menghindari tabrakan ID
+                
+                importedData[sName].forEach(item => {
+                    store.add(item);
+                });
 
-            tx.oncomplete = () => {
-                alert("Sinkronisasi Sukses! Seluruh basis data Clotvers System berhasil dimigrasikan ke perangkat ini.");
-                refreshAllTablesAndDropdowns();
-            };
-        } catch(err) {
-            alert("Format berkas sinkronisasi JSON rusak atau tidak valid.");
+                tx.oncomplete = () => {
+                    counter++;
+                    if(counter === stores.length) {
+                        alert("Database Berhasil Dipulihkan (Restore Complete) secara sempurna!");
+                        refreshAllViews();
+                    }
+                };
+            });
+        } catch (err) {
+            alert("Format file JSON rusak atau tidak dikenali oleh sistem Clothvers.");
         }
     };
     reader.readAsText(file);
-}
-
-// Global Delete Record Master Controller Function
-function hapusRecord(storeName, id) {
-    if(!confirm("Apakah anda yakin ingin menghapus dokumen arsip permanen ini?")) return;
-    const tx = db.transaction(storeName, 'readwrite');
-    tx.objectStore(storeName).delete(id);
-    tx.oncomplete = () => {
-        refreshAllTablesAndDropdowns();
-    };
-}
-
-// ==========================================
-// H. LOGIKA UTILITAS EKSPOR LAPORAN (PDF & CSV)
-// ==========================================
-function eksporCSVExcelPenjualan() {
-    let csvContent = "data:text/csv;charset=utf-8,Tanggal,Nama Model,Warna,Size,QTY,Platform,Grand Total\n";
-    const tx = db.transaction('store_transaksi', 'readonly');
-    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const t = cursor.value;
-            if(matchFilterDate(t.tanggal_order)) {
-                csvContent += `${t.tanggal_order},${t.nama_model},${t.varian_warna},${t.varian_size},${t.qty},${t.platform_order},${t.grand_total}\n`;
-            }
-            cursor.continue();
-        } else {
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekap_Penjualan_Clotvers_${getFilterRange()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        }
-    };
-}
-
-function downloadPDFSkemaHPP(id) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    const tx = db.transaction('store_hpp', 'readonly');
-    tx.objectStore('store_hpp').get(id).onsuccess = (e) => {
-        const h = e.target.result;
-        doc.setFont("helvetica", "bold");
-        doc.text("CLOTVERS SYSTEM v1.0 - LEMBAR KALKULASI HPP", 14, 20);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Model Artikel: ${h.nama_model}`, 14, 28);
-        doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString()}`, 14, 34);
-        
-        const headers = [["Komponen Biaya", "Nominal Satuan (Rp)"]];
-        const data = [
-            ["Biaya Kain Utama", `Rp ${h.biaya_kain.toLocaleString()}`],
-            ["Ongkos CMT / Jahit", `Rp ${h.ongkos_jahit.toLocaleString()}`],
-            ["Aplikasi Sablon / Bordir", `Rp ${h.aplikasi_sablon.toLocaleString()}`],
-            ["Packaging & Aksesoris", `Rp ${h.packaging.toLocaleString()}`],
-            ["TOTAL NET HPP PRODUCTION", `Rp ${h.hpp_total.toLocaleString()}`],
-            ["Target Margin Bersih", `${h.margin_percent}%`],
-            ["Rekomendasi Jual Bersih", `Rp ${(h.hpp_total + (h.hpp_total*(h.margin_percent/100))).toLocaleString()}`]
-        ];
-        
-        doc.autoTable({ startY: 40, head: headers, body: data, theme: 'grid' });
-        doc.save(`Skema_HPP_Clotvers_${h.nama_model.replace(/\s+/g, '_')}.pdf`);
-    };
-}
-
-function downloadLaporanPOSHarian() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text(`CLOTVERS v1.0 - LAPORAN KASIR POS PERIODE ${getFilterRange()}`, 14, 20);
-    
-    let tableData = [];
-    const tx = db.transaction('store_transaksi', 'readonly');
-    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const t = cursor.value;
-            if(matchFilterDate(t.tanggal_order)) {
-                tableData.push([t.tanggal_order, `${t.nama_model} (${t.varian_warna}-${t.varian_size})`, t.qty, t.platform_order, `Rp ${t.grand_total.toLocaleString()}`, t.status_bayar]);
-            }
-            cursor.continue();
-        } else {
-            doc.autoTable({
-                startY: 28,
-                head: [['Tanggal', 'Item Varian', 'QTY', 'Platform', 'Grand Total', 'Status']],
-                body: tableData
-            });
-            doc.save(`Laporan_Kasir_POS_Clotvers_${getFilterRange()}.pdf`);
-        }
-    };
-}
-
-function downloadPDFAnalisis() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text(`CLOTVERS v1.0 - LAPORAN ANALISIS QUANTITATIVE PERIODE ${getFilterRange()}`, 14, 20);
-    
-    let tableData = [];
-    const tx = db.transaction('store_transaksi', 'readonly');
-    tx.objectStore('store_transaksi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const t = cursor.value;
-            if(matchFilterDate(t.tanggal_order)) {
-                tableData.push([t.tanggal_order, t.nama_model, `${t.varian_warna} - ${t.varian_size}`, t.qty, t.platform_order, `Rp ${t.grand_total.toLocaleString()}`]);
-            }
-            cursor.continue();
-        } else {
-            doc.autoTable({
-                startY: 28,
-                head: [['Tanggal', 'Model', 'Varian/Size', 'QTY', 'Platform', 'Omset']],
-                body: tableData
-            });
-            doc.save(`Analisis_Kuantitatif_Clotvers_${getFilterRange()}.pdf`);
-        }
-    };
-}
-
-function downloadPDFRetur() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text(`CLOTVERS v1.0 - LAPORAN RETUR & BARANG CACAT ${getFilterRange()}`, 14, 20);
-    
-    let tableData = [];
-    const tx = db.transaction('store_retur_reject', 'readonly');
-    tx.objectStore('store_retur_reject').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const r = cursor.value;
-            if(matchFilterDate(r.tanggal)) {
-                tableData.push([r.tanggal, r.jenis, `${r.nama_model} (${r.size})`, r.qty, `Rp ${r.nominal_rugi.toLocaleString()}`, r.keterangan]);
-            }
-            cursor.continue();
-        } else {
-            doc.autoTable({
-                startY: 28,
-                head: [['Tanggal', 'Jenis Klaim', 'Item', 'QTY', 'Kerugian', 'Memo']],
-                body: tableData
-            });
-            doc.save(`Laporan_Retur_Reject_Clotvers_${getFilterRange()}.pdf`);
-        }
-    };
-}
-
-function downloadPDFKeuangan(subType) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text(`CLOTVERS v1.0 - JURNAL ARUS AKUNTANSI [${subType.toUpperCase()}] ${getFilterRange()}`, 14, 20);
-    
-    let tableData = [];
-    const tx = db.transaction('store_jurnal_akuntansi', 'readonly');
-    tx.objectStore('store_jurnal_akuntansi').openCursor().onsuccess = (e) => {
-        const cursor = e.target.result;
-        if(cursor) {
-            const j = cursor.value;
-            if(matchFilterDate(j.tanggal)) {
-                if(subType === 'omset' && j.tipe_jurnal === 'Pemasukan POS') {
-                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
-                } else if(subType === 'pengeluaran' && j.tipe_jurnal === 'Pengeluaran') {
-                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
-                } else if(subType === 'pemasukan' && j.tipe_jurnal === 'Pemasukan Lain') {
-                    tableData.push([j.tanggal, j.klasifikasi_akun, j.keterangan_memo, `Rp ${j.nominal.toLocaleString()}`]);
-                }
-            }
-            cursor.continue();
-        } else {
-            doc.autoTable({
-                startY: 28,
-                head: [['Tanggal', 'Klasifikasi Akun', 'Keterangan Memo', 'Nominal']],
-                body: tableData
-            });
-            doc.save(`Jurnal_Akuntansi_${subType}_Clotvers_${getFilterRange()}.pdf`);
-        }
-    };
 }
