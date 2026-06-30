@@ -1,658 +1,605 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full bg-[#F8FAFC]">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clothvers System - ERP Single-Page v1.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Clothvers System v1.0 - ERP Mandiri Tanpa Server</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        /* Custom smooth scrollbar for response tables */
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
     </style>
 </head>
-<body class="bg-[#FFFFFF] text-[#0F172A] min-h-screen flex flex-col md:flex-row antialiased">
+<body class="h-full text-[#334155] antialiased flex flex-col md:flex-row overflow-hidden">
 
-    <aside class="hidden lg:flex flex-col w-64 bg-[#f5f5f7] border-r border-gray-200 h-screen sticky top-0 text-[#1E293B]">
-        <div class="p-6 border-b border-gray-200">
-            <h1 class="text-xl font-bold text-[#0F172A] tracking-tight">Clothvers System</h1>
-            <p class="text-xs text-gray-500 font-medium">ERP Single-Page v1.0</p>
-        </div>
-        <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="desktop-nav">
+    <aside class="w-full md:w-64 bg-[#0F172A] text-white flex flex-col justify-between flex-shrink-0 z-30 shadow-xl">
+        <div class="p-6 flex flex-col h-full overflow-y-auto">
+            <div class="flex items-center gap-3 mb-8 pb-4 border-b border-slate-800">
+                <div class="w-8 h-8 rounded-lg bg-[#3B82F6] flex items-center justify-center font-bold text-white text-lg">C</div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight text-white">Clothvers System</h1>
+                    <span class="text-xs text-slate-400 font-medium">ERP Serverless v1.0</span>
+                </div>
+            </div>
+            
+            <nav class="space-y-1 flex-1">
+                <button onclick="switchModule('dashboard-stok')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-stok">
+                    <span>📦 Input Stok Pakaian</span>
+                </button>
+                <button onclick="switchModule('dashboard-hpp')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-hpp">
+                    <span>📊 Manajemen HPP</span>
+                </button>
+                <button onclick="switchModule('terminal-pos')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-pos">
+                    <span>🛒 Terminal POS Kasir</span>
+                </button>
+                <button onclick="switchModule('crm-customer')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-crm">
+                    <span>👥 Database Customer</span>
+                </button>
+                <button onclick="switchModule('retur-inventaris')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-retur">
+                    <span>🔄 Retur & Inventaris</span>
+                </button>
+                <button onclick="switchModule('akuntansi-keuangan')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-akuntansi">
+                    <span>💵 Akuntansi & Keuangan</span>
+                </button>
+                <button onclick="switchModule('backup-panel')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-backup">
+                    <span>💾 Backup & Sinkronisasi</span>
+                </button>
             </nav>
-        <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400 font-semibold bg-white">
-            Made with <i class="fa-solid fa-heart text-red-500"></i> by Clothvers x Elevatio
+        </div>
+        <div class="p-4 bg-slate-950/50 text-center border-t border-slate-900">
+            <p class="text-xs text-slate-500 font-medium">Made in by Clothvers x Elevatio</p>
         </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 min-h-screen pb-16 md:pb-24 lg:pb-0">
-        <header class="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40 shadow-xs">
-            <div class="flex items-center space-x-3">
-                <button id="drawer-toggle" class="lg:hidden text-[#1E293B] hover:bg-gray-100 p-2 rounded-lg focus:outline-none transition-colors">
-                    <i class="fa-solid fa-bars text-xl"></i>
-                </button>
-                <div class="lg:hidden">
-                    <h1 class="text-base font-bold text-[#0F172A]">Clothvers System</h1>
-                </div>
-            </div>
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-slate-100 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 z-20 flex-shrink-0">
+            <h2 id="module-title" class="text-lg font-bold text-[#0F172A]">Dashboard</h2>
             
-            <div class="flex items-center space-x-2 md:space-x-4">
-                <div class="flex items-center bg-[#f5f5f7] rounded-lg px-2 py-1 border border-gray-200">
-                    <i class="fa-solid fa-calendar text-xs text-gray-400 mr-2"></i>
-                    <select id="global-periode-filter" class="bg-transparent text-xs font-semibold text-[#1E293B] focus:outline-none cursor-pointer">
-                        </select>
-                </div>
-                <div class="hidden sm:flex items-center space-x-1">
-                    <button id="btn-backup-json" class="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center space-x-1 shadow-2xs">
-                        <i class="fa-solid fa-download text-gray-400"></i> <span>Backup</span>
-                    </button>
-                    <button id="btn-trigger-restore" class="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center space-x-1 shadow-2xs">
-                        <i class="fa-solid fa-upload text-gray-400"></i> <span>Restore</span>
-                    </button>
-                    <input type="file" id="input-restore-json" accept=".json" class="hidden">
-                </div>
+            <div class="flex items-center gap-2">
+                <label for="global-filter" class="text-xs font-semibold text-[#334155] uppercase tracking-wider">Periode:</label>
+                <select id="global-filter" onchange="handleGlobalFilterChange()" class="bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all">
+                    </select>
             </div>
         </header>
 
-        <div id="tablet-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" role="dialog" aria-modal="true">
-            <div class="absolute inset-0 bg-black/30 backdrop-blur-xs transition-opacity" id="drawer-overlay"></div>
-            <div class="absolute inset-y-0 left-0 max-w-full flex">
-                <div class="w-64 bg-white shadow-2xl flex flex-col">
-                    <div class="p-6 border-b border-gray-100 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-lg font-bold text-[#0F172A]">Clothvers System</h2>
-                            <p class="text-xs text-gray-400 font-medium">ERP v1.0 Drawer Mode</p>
+        <div id="content-area" class="flex-1 p-6 overflow-y-auto space-y-6">
+            
+            <section id="mod-stok" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-1">
+                        <h3 class="text-base font-bold text-[#0F172A] mb-4 flex items-center gap-2">📝 Form Produksi Model</h3>
+                        <form id="form-produk" onsubmit="saveProduk(event)" class="space-y-4">
+                            <input type="hidden" id="produk-id">
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Nama Model Pakaian</label>
+                                <input type="text" id="nama-model" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" placeholder="Contoh: Coach Jacket Classic">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Jenis Kain</label>
+                                    <input type="text" id="jenis-kain" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" placeholder="Taslan, Fleece, dll">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Tipe Kain GSM</label>
+                                    <input type="text" id="tipe-gsm" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" placeholder="280, 330, dll">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Detail Penyesuaian Produksi</label>
+                                <textarea id="detail-produksi" rows="3" class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" placeholder="Catatan sablon, aksesoris, kancing..."></textarea>
+                            </div>
+                            <div class="border-t border-slate-100 pt-4">
+                                <label class="block text-xs font-semibold text-[#334155] mb-2">🎨 Tambah Varian Warna</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="input-varian-warna" class="flex-1 bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" placeholder="Nama Warna (e.g., Hitam)">
+                                    <button type="button" onclick="addWarnaMatriks()" class="bg-[#3B82F6] hover:bg-blue-600 text-white font-semibold text-sm px-4 rounded-xl transition-all">Tambah</button>
+                                </div>
+                            </div>
+                            <div class="pt-2 flex gap-2">
+                                <button type="submit" class="flex-1 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-sm py-3 rounded-xl transition-all shadow-sm">Simpan Model</button>
+                                <button type="button" onclick="resetFormProduk()" class="bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold text-sm px-4 py-3 rounded-xl transition-all">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2 flex flex-col">
+                        <h3 class="text-base font-bold text-[#0F172A] mb-4 flex items-center gap-2">📊 Matriks Ukuran & Parameter Fisik</h3>
+                        <div id="matriks-varian-container" class="space-y-6 flex-1 overflow-y-auto max-h-[500px] pr-2">
+                            <p class="text-sm text-slate-400 italic text-center py-12">Masukkan varian warna di form sebelah kiri terlebih dahulu untuk mengaktifkan tabel spesifikasi ukuran fisik.</p>
                         </div>
-                        <button id="drawer-close" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-md">
-                            <i class="fa-solid fa-xmark text-lg"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h3 class="text-base font-bold text-[#0F172A]">📦 Master Inventori Pakaian</h3>
+                        <button onclick="downloadPDFStokAll()" class="bg-[#10B981] hover:bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2">
+                            📥 Download PDF Semua Data Stok
                         </button>
                     </div>
-                    <nav class="flex-1 p-4 space-y-1 overflow-y-auto id-drawer-nav" id="tablet-drawer-nav">
-                        </nav>
-                    <div class="p-4 border-t border-gray-100 text-center text-xs text-gray-400 font-semibold bg-[#f5f5f7]">
-                        Made with <i class="fa-solid fa-heart text-red-500"></i> by Clothvers
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <main class="flex-1 overflow-y-auto h-screen pb-32 p-4 lg:p-8 bg-white" id="main-content-area">
-            
-            <section id="modul-stok" class="app-module space-y-6">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Katalog & Manajemen Stok Pakaian</h2>
-                        <p class="text-sm text-gray-500">Formulasi varian kain dan pembuatan chart ukuran fisik komprehensif.</p>
-                    </div>
-                    <button id="btn-pdf-stok" class="bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 shadow-md self-start sm:self-auto transition-all">
-                        <i class="fa-solid fa-file-pdf"></i> <span>Download PDF Semua Data Stok</span>
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                    <div class="bg-[#f5f5f7] border border-gray-200/60 rounded-2xl p-5 space-y-4 shadow-2xs xl:col-span-1">
-                        <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-200 pb-2">Registrasi Model Pakaian Baru</h3>
-                        <form id="form-registrasi-stok" class="space-y-3" onsubmit="event.preventDefault();">
-                            <input type="hidden" id="stok-edit-id">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Model Pakaian</label>
-                                <input type="text" id="stok-nama-model" required placeholder="Contoh: Oversized Hoodie Premium" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-medium">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jenis Kain Utama</label>
-                                <input type="text" id="stok-jenis-kain" required placeholder="Contoh: Heavy Cotton Combed" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-medium">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipe Ketebalan Kain (GSM)</label>
-                                <input type="text" id="stok-tipe-gsm" required placeholder="Contoh: 300 GSM atau 24s" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-medium">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Detail Spesifikasi Produksi</label>
-                                <textarea id="stok-detail-produksi" rows="2" placeholder="Informasi tambahan potongan jahitan, benang, dll..." class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-medium"></textarea>
-                            </div>
-                            
-                            <div class="border-t border-gray-200 pt-3 mt-2">
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tambahkan Varian Warna</label>
-                                <div class="flex space-x-2">
-                                    <input type="text" id="stok-input-warna" placeholder="Contoh: Midnight Black" class="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A]">
-                                    <button type="button" id="btn-tambah-warna" class="bg-[#0F172A] text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div id="container-matriks-warna" class="space-y-4 max-h-80 overflow-y-auto pr-1 mt-3">
-                                </div>
-
-                            <button type="submit" id="btn-simpan-stok" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-lg shadow-sm transition-colors uppercase tracking-wider mt-4">
-                                <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan ke Katalog Master
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="xl:col-span-2 space-y-3">
-                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider mb-3 flex items-center">
-                                <i class="fa-solid fa-boxes-stacked mr-2 text-gray-400"></i> Gudang Utama Master Produk Pakaian
-                            </h3>
-                            <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                                <table class="w-full text-left border-collapse text-sm">
-                                    <thead>
-                                        <tr class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-bold text-xs uppercase">
-                                            <th class="p-3">Nama Model / Spek Kain</th>
-                                            <th class="p-3">Ringkasan Varian Warna & Ukuran</th>
-                                            <th class="p-3 text-center">Total Stok</th>
-                                            <th class="p-3 text-center">Aksi Operasional</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-body-stok" class="divide-y divide-gray-100 text-[#1E293B]">
-                                        </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-hpp" class="app-module space-y-6 hidden">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Kalkulator HPP & Manajemen Multi-Channel Pricing</h2>
-                        <p class="text-sm text-gray-500">Sinkronisasi otomatis biaya bahan kain mentah dengan formulasi komisi pasar retail global.</p>
-                    </div>
-                    <button id="btn-pdf-hpp" class="bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 shadow-md self-start sm:self-auto transition-all">
-                        <i class="fa-solid fa-file-pdf"></i> <span>Download PDF Semua Laporan HPP</span>
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                    <div class="bg-[#f5f5f7] border border-gray-200/60 rounded-2xl p-5 space-y-4 shadow-2xs xl:col-span-1">
-                        <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-200 pb-2">Formulasi Simulasi Komponen Biaya</h3>
-                        <form id="form-manajemen-hpp" class="space-y-3" onsubmit="event.preventDefault();">
-                            <input type="hidden" id="hpp-edit-id">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Model Pakaian</label>
-                                <select id="hpp-select-model" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-semibold">
-                                    </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Ukuran Varian</label>
-                                <select id="hpp-select-size" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0F172A] text-[#0F172A] font-semibold">
-                                    <option value="">-- Pilih Model Terlebih Dahulu --</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Biaya Kain Utama (Live Sync)</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2 text-sm font-bold text-gray-400">Rp</span>
-                                    <input type="number" id="hpp-biaya-kain-live" readonly class="w-full bg-gray-100 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm font-bold text-[#0F172A] focus:outline-none cursor-not-allowed">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ongkos Jahit / Pcs</label>
-                                    <input type="number" id="hpp-ongkos-jahit" required value="0" min="0" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none text-[#0F172A]">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Aplikasi Sablon/Bordir</label>
-                                    <input type="number" id="hpp-aplikasi-sablon" required value="0" min="0" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none text-[#0F172A]">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Aksesoris & Packaging</label>
-                                    <input type="number" id="hpp-packaging" required value="0" min="0" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none text-[#0F172A]">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Margin Target (%)</label>
-                                    <input type="number" id="hpp-margin-percent" required value="0" min="0" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none text-[#0F172A] font-bold">
-                                </div>
-                            </div>
-
-                            <div class="border-t border-gray-200 pt-3 mt-2 space-y-2">
-                                <span class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Potongan Biaya Admin Channel (%)</span>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">WA Retail (%)</label>
-                                        <input type="number" id="admin-wa" step="0.1" value="0" class="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs text-[#1E293B]">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">Shopee (%)</label>
-                                        <input type="number" id="admin-shopee" step="0.1" value="0" class="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs text-[#1E293B]">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">TikTok Shop (%)</label>
-                                        <input type="number" id="admin-tiktok" step="0.1" value="0" class="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs text-[#1E293B]">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">Reseller (%)</label>
-                                        <input type="number" id="admin-reseller" step="0.1" value="0" class="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs text-[#1E293B]">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-600 uppercase">Grosir / B2B Bulk (%)</label>
-                                    <input type="number" id="admin-grosir" step="0.1" value="0" class="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs text-[#1E293B]">
-                                </div>
-                            </div>
-
-                            <button type="submit" id="btn-simpan-hpp" class="w-full bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-lg shadow-sm transition-colors uppercase tracking-wider mt-2">
-                                <i class="fa-solid fa-calculator mr-1"></i> Simpan Matriks Finansial HPP
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="xl:col-span-2 space-y-3">
-                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider mb-3 flex items-center">
-                                <i class="fa-solid fa-coins mr-2 text-gray-400"></i> Matriks Rekapitulasi Harga & Strategi Penjualan Channel
-                            </h3>
-                            <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                                <table class="w-full text-left border-collapse text-sm">
-                                    <thead>
-                                        <tr class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-bold text-xs uppercase">
-                                            <th class="p-3">Model / Ukuran</th>
-                                            <th class="p-3 text-right">HPP Total</th>
-                                            <th class="p-3 text-right">Harga Jual Dasar</th>
-                                            <th class="p-3">Simulasi Bersih Per Channel</th>
-                                            <th class="p-3 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-body-hpp" class="divide-y divide-gray-100 text-[#1E293B]">
-                                        </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-pos" class="app-module space-y-6 hidden">
-                <div class="border-b border-gray-100 pb-4">
-                    <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Terminal Mesin Kasir POS & Antrean PO</h2>
-                    <p class="text-sm text-gray-500">Mekanisme transaksi multi-item real-time terintegrasi otomasi pembukuan finansial.</p>
-                </div>
-
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                    <div class="xl:col-span-1 space-y-4">
-                        <div class="bg-[#f5f5f7] border border-gray-200/60 rounded-2xl p-5 space-y-3 shadow-2xs">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-200 pb-2">Identitas & Timeline Pre-Order</h3>
-                            <div class="space-y-2">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Pelanggan (Customer)</label>
-                                    <input type="text" id="pos-customer-nama" required placeholder="Nama Lengkap" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none text-[#0F172A] font-semibold">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nomor WhatsApp HP (Gunakan Kode Negara)</label>
-                                    <input type="text" id="pos-customer-hp" required placeholder="Contoh: 62812345678" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none text-[#0F172A]">
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal Order</label>
-                                        <input type="date" id="pos-tanggal-order" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A] font-medium">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Estimasi Selesai (PO)</label>
-                                        <input type="date" id="pos-tanggal-estimasi" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A] font-medium">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ekspedisi Kurir</label>
-                                        <input type="text" id="pos-ekspedisi" placeholder="JNE/J&T/Cargo" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nomor Resi / Slot</label>
-                                        <input type="text" id="pos-resi" placeholder="Belum ada / No Resi" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-3 shadow-2xs">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-100 pb-2">Injeksi Item Belanja</h3>
-                            <div class="space-y-2">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Produk</label>
-                                    <select id="pos-select-produk" class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#0F172A] font-semibold">
-                                        </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Warna & Ukuran Terintegrasi</label>
-                                    <select id="pos-select-varian" class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#0F172A]">
-                                        </select>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jumlah (Qty)</label>
-                                        <input type="number" id="pos-input-qty" value="1" min="1" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-[#0F172A] font-bold text-center">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Jual Kustom (Rp)</label>
-                                        <input type="number" id="pos-input-harga-kustom" placeholder="Otomatis sistem" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-[#0F172A]">
-                                    </div>
-                                </div>
-                                <button type="button" id="btn-tambah-keranjang" class="w-full bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-lg transition-colors uppercase tracking-wider flex items-center justify-center space-x-1">
-                                    <i class="fa-solid fa-cart-plus"></i> <span>Tambah ke Keranjang Belanja</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="xl:col-span-2 space-y-4">
-                        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-100 pb-2">Daftar Belanja Temporer Pelanggan (Cart)</h3>
-                            
-                            <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                                <table class="w-full text-left border-collapse text-sm">
-                                    <thead>
-                                        <tr class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-bold text-xs uppercase">
-                                            <th class="p-3">Deskripsi Item Pakaian</th>
-                                            <th class="p-3 text-center" style="width: 100px;">Qty</th>
-                                            <th class="p-3 text-right">Harga Satuan</th>
-                                            <th class="p-3 text-right">Subtotal</th>
-                                            <th class="p-3 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-body-keranjang" class="divide-y divide-gray-100 text-[#1E293B]">
-                                        <tr>
-                                            <td colspan="5" class="p-4 text-center text-gray-400 font-medium">Keranjang kosong. Sila pilih item di sisi kiri.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                <div class="bg-[#f5f5f7] rounded-xl p-4 space-y-3">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase">Potongan Diskon / Voucher Promosi</label>
-                                    <div class="flex space-x-2">
-                                        <input type="number" id="pos-diskon-nilai" value="0" min="0" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-[#0F172A]">
-                                        <select id="pos-diskon-tipe" class="bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-[#0F172A]">
-                                            <option value="NOMINAL">IDR (Rp)</option>
-                                            <option value="PERSEN">%</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Status Nominal Pembayaran</label>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <button type="button" id="btn-pay-lunas" class="bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg uppercase">Lunas</button>
-                                            <button type="button" id="btn-pay-dp" class="bg-amber-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg uppercase">Uang Muka (DP)</button>
-                                        </div>
-                                        <input type="number" id="pos-nominal-bayar-dp" placeholder="Ketik nominal DP jika tidak lunas" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-[#0F172A] mt-2 hidden">
-                                    </div>
-                                </div>
-
-                                <div class="bg-[#0F172A] text-white rounded-xl p-4 flex flex-col justify-between shadow-md">
-                                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Tagihan Bersih:</span>
-                                        <span class="text-2xl font-black text-emerald-400" id="pos-text-grandtotal">Rp 0</span>
-                                    </div>
-                                    <div class="space-y-1.5 mt-3">
-                                        <button type="button" id="btn-finalisasi-transaksi" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs py-2.5 px-4 rounded-lg shadow-xs uppercase tracking-wider transition-all">
-                                            <i class="fa-solid fa-cash-register mr-1"></i> Simpan & Selesaikan Transaksi
-                                        </button>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <button type="button" id="btn-cetak-struk-last" disabled class="w-full bg-slate-800 text-slate-400 text-[10px] font-bold py-2 px-1 rounded-md uppercase border border-slate-700 flex items-center justify-center space-x-1 cursor-not-allowed">
-                                                <i class="fa-solid fa-file-invoice"></i> <span>Struk PDF</span>
-                                            </button>
-                                            <button type="button" id="btn-wa-struk-last" disabled class="w-full bg-slate-800 text-slate-400 text-[10px] font-bold py-2 px-1 rounded-md uppercase border border-slate-700 flex items-center justify-center space-x-1 cursor-not-allowed">
-                                                <i class="fa-brands fa-whatsapp"></i> <span>Kirim WA</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="modul-customer" class="app-module space-y-6 hidden">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Database Customer & Log CRM</h2>
-                        <p class="text-sm text-gray-500">Merekam riwayat interaksi loyalitas konsumen dan volume transaksi makro.</p>
-                    </div>
-                    <button id="btn-pdf-customer" class="bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 shadow-md self-start sm:self-auto transition-all">
-                        <i class="fa-solid fa-file-pdf"></i> <span>Download PDF Database Customer</span>
-                    </button>
-                </div>
-
-                <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3">
-                    <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                        <table class="w-full text-left border-collapse text-sm">
-                            <thead>
-                                <tr class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-bold text-xs uppercase">
-                                    <th class="p-3">ID Customer</th>
-                                    <th class="p-3">Tanggal Terdaftar</th>
-                                    <th class="p-3">Nama Lengkap Pelanggan</th>
-                                    <th class="p-3">Nomor Kontak HP (WA)</th>
-                                    <th class="p-3 text-right">Akumulasi Belanja (Rp)</th>
-                                    <th class="p-3 text-center">Tindakan</th>
+                    <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                <tr>
+                                    <th class="p-4">Model Pakaian</th>
+                                    <th class="p-4">Kain & GSM</th>
+                                    <th class="p-4">Total Varian Warna</th>
+                                    <th class="p-4">Total Stok Tersedia</th>
+                                    <th class="p-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody id="table-body-customer" class="divide-y divide-gray-100 text-[#1E293B]">
+                            <tbody id="table-stok-body" class="divide-y divide-slate-50 text-[#334155]">
                                 </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <section id="modul-logistik" class="app-module space-y-6 hidden">
-                <div class="border-b border-gray-100 pb-4">
-                    <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Logistik: Retur Reject & Penyusutan Aset Alat Kerja</h2>
-                    <p class="text-sm text-gray-500">Tata kelola barang rusak/klaim ukuran serta depresiasi nilai aset produksi vendor.</p>
+            <section id="mod-hpp" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <h3 class="text-base font-bold text-[#0F172A] mb-4">📊 Simulasi Harga Jual & Struktur HPP Multi-Channel</h3>
+                    <form id="form-hpp" onsubmit="saveHPP(event)" class="space-y-6">
+                        <input type="hidden" id="hpp-id">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Pilih Model Pakaian</label>
+                                <select id="hpp-pilih-model" onchange="syncHppModelSelect()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all">
+                                    </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Pilih Ukuran / Size</label>
+                                <select id="hpp-pilih-size" onchange="syncHppPriceBase()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all">
+                                    </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Biaya Kain Utama (Live Sync HPP Varian)</label>
+                                <input type="number" id="hpp-biaya-kain" readonly class="w-full bg-slate-100 border border-slate-200 text-slate-500 font-medium text-sm rounded-xl px-4 py-2.5 focus:outline-none" value="0">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-slate-100 pt-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Ongkos Jahit (Rp)</label>
+                                <input type="number" id="hpp-ongkos-jahit" oninput="calculateTotalHPP()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" value="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Aplikasi Sablon/Bordir (Rp)</label>
+                                <input type="number" id="hpp-sablon" oninput="calculateTotalHPP()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" value="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Packaging & Label (Rp)</label>
+                                <input type="number" id="hpp-packaging" oninput="calculateTotalHPP()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" value="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Margin Target (%)</label>
+                                <input type="number" id="hpp-margin" oninput="calculateTotalHPP()" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all" value="30">
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-[#F8FAFC] rounded-xl border border-slate-100 flex justify-between items-center">
+                            <span class="text-sm font-bold text-[#0F172A]">Kalkulasi Total HPP Bersih:</span>
+                            <span id="hpp-total-display" class="text-base font-extrabold text-[#0F172A]">Rp 0</span>
+                        </div>
+
+                        <div class="border-t border-slate-100 pt-4">
+                            <h4 class="text-xs font-bold text-[#0F172A] mb-3 uppercase tracking-wider">🎛️ Input Manual Biaya Admin Marketplace (%) & Proyeksi Jual</h4>
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                                <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                                    <label class="block text-[11px] font-bold text-[#334155] mb-1">WhatsApp Retail</label>
+                                    <input type="number" id="adm-wa" oninput="calculateChannelsPrice()" class="w-full bg-white border border-slate-200 text-sm rounded-lg p-2 focus:outline-none" value="0">
+                                    <div id="prc-wa" class="text-xs font-bold text-[#3B82F6] mt-2">Rp 0</div>
+                                </div>
+                                <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                                    <label class="block text-[11px] font-bold text-[#334155] mb-1">Shopee Admin</label>
+                                    <input type="number" id="adm-shopee" oninput="calculateChannelsPrice()" class="w-full bg-white border border-slate-200 text-sm rounded-lg p-2 focus:outline-none" value="6">
+                                    <div id="prc-shopee" class="text-xs font-bold text-[#3B82F6] mt-2">Rp 0</div>
+                                </div>
+                                <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                                    <label class="block text-[11px] font-bold text-[#334155] mb-1">TikTok Shop</label>
+                                    <input type="number" id="adm-tiktok" oninput="calculateChannelsPrice()" class="w-full bg-white border border-slate-200 text-sm rounded-lg p-2 focus:outline-none" value="5">
+                                    <div id="prc-tiktok" class="text-xs font-bold text-[#3B82F6] mt-2">Rp 0</div>
+                                </div>
+                                <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                                    <label class="block text-[11px] font-bold text-[#334155] mb-1">Mitra Reseller</label>
+                                    <input type="number" id="adm-reseller" oninput="calculateChannelsPrice()" class="w-full bg-white border border-slate-200 text-sm rounded-lg p-2 focus:outline-none" value="15">
+                                    <div id="prc-reseller" class="text-xs font-bold text-[#3B82F6] mt-2">Rp 0</div>
+                                </div>
+                                <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                                    <label class="block text-[11px] font-bold text-[#334155] mb-1">Partai Grosir</label>
+                                    <input type="number" id="adm-grosir" oninput="calculateChannelsPrice()" class="w-full bg-white border border-slate-200 text-sm rounded-lg p-2 focus:outline-none" value="25">
+                                    <div id="prc-grosir" class="text-xs font-bold text-[#3B82F6] mt-2">Rp 0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 justify-end">
+                            <button type="button" onclick="resetFormHPP()" class="bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold text-sm px-5 py-2.5 rounded-xl transition-all">Reset</button>
+                            <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm">Simpan Skema HPP</button>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
-                        <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider">Log Retur & Barang Cacat Produksi</h3>
-                            <button id="btn-pdf-retur" class="text-xs font-bold text-gray-600 hover:text-black"><i class="fa-solid fa-download mr-1"></i>PDF</button>
-                        </div>
-                        <form id="form-retur-reject" class="grid grid-cols-1 sm:grid-cols-2 gap-2" onsubmit="event.preventDefault();">
-                            <input type="hidden" id="retur-edit-id">
-                            <div class="sm:col-span-2">
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Keterangan Model / Varian Barang</label>
-                                <input type="text" id="retur-nama-barang" required placeholder="Contoh: Hoodie Black Size M - Lengan Robek" class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Kategori Kasus</label>
-                                <select id="retur-kategori" class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-[#0F172A]">
-                                    <option value="CACAT_PRODUKSI">Cacat Produksi / Reject</option>
-                                    <option value="TUKAR_SIZE">Tukar Size Pelanggan</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Nilai Kerugian Riil (Rp)</label>
-                                <input type="number" id="retur-nilai-kerugian" required class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                            </div>
-                            <button type="submit" class="sm:col-span-2 bg-[#0F172A] text-white text-xs font-bold py-2 rounded-lg uppercase transition-colors">Simpan Rekaman Kasus</button>
-                        </form>
-                        <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-[#f5f5f7] text-gray-600 font-bold uppercase">
-                                    <tr>
-                                        <th class="p-2">Deskripsi Kasus</th>
-                                        <th class="p-2">Kategori</th>
-                                        <th class="p-2 text-right">Rugi (Rp)</th>
-                                        <th class="p-2 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-body-retur" class="divide-y divide-gray-100">
-                                    </tbody>
-                            </table>
-                        </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h3 class="text-base font-bold text-[#0F172A]">📋 Log Komparasi Skema Nilai Jual</h3>
+                        <button onclick="downloadPDFHppAll()" class="bg-[#10B981] hover:bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm">
+                            📥 Download PDF Semua Laporan HPP
+                        </button>
                     </div>
-
-                    <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
-                        <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-                            <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider">Inventaris Perlengkapan & Penyusutan Bulanan</h3>
-                            <button id="btn-pdf-inventaris" class="text-xs font-bold text-gray-600 hover:text-black"><i class="fa-solid fa-download mr-1"></i>PDF</button>
-                        </div>
-                        <form id="form-inventaris" class="grid grid-cols-1 sm:grid-cols-2 gap-2" onsubmit="event.preventDefault();">
-                            <input type="hidden" id="inv-edit-id">
-                            <div class="sm:col-span-2">
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Nama Aset Alat Kerja</label>
-                                <input type="text" id="inv-nama-aset" required placeholder="Contoh: Mesin Jahit Juki Otomatis v2" class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Harga Perolehan Aset (Rp)</label>
-                                <input type="number" id="inv-harga-beli" required class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase">Penyusutan Bulanan (Rp)</label>
-                                <input type="number" id="inv-biaya-susut" required class="w-full bg-[#f5f5f7] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-[#0F172A]">
-                            </div>
-                            <button type="submit" class="sm:col-span-2 bg-[#0F172A] text-white text-xs font-bold py-2 rounded-lg uppercase transition-colors">Daftarkan Aset</button>
-                        </form>
-                        <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-[#f5f5f7] text-gray-600 font-bold uppercase">
-                                    <tr>
-                                        <th class="p-2">Nama Aset</th>
-                                        <th class="p-2 text-right">Nilai Awal</th>
-                                        <th class="p-2 text-right">Susut/Bln</th>
-                                        <th class="p-2 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-body-inventaris" class="divide-y divide-gray-100">
-                                    </tbody>
-                            </table>
-                        </div>
+                    <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                <tr>
+                                    <th class="p-4">Model & Size</th>
+                                    <th class="p-4">HPP Bersih</th>
+                                    <th class="p-4">WA Retail</th>
+                                    <th class="p-4">Shopee</th>
+                                    <th class="p-4">TikTok</th>
+                                    <th class="p-4">Reseller</th>
+                                    <th class="p-4">Grosir</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-hpp-body" class="divide-y divide-slate-50 text-[#334155]">
+                                </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
 
-            <section id="modul-akuntansi" class="app-module space-y-6 hidden">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-extrabold text-[#0F172A] tracking-tight">Buku Besar Akuntansi & Indikator Keuangan</h2>
-                        <p class="text-sm text-gray-500">Kompilasi otomatis log penjualan kasir dan pencatatan manual operasional bisnis.</p>
-                    </div>
-                    <div class="flex space-x-2 self-start sm:self-auto">
-                        <button id="btn-excel-akuntansi" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-2xs flex items-center space-x-1">
-                            <i class="fa-solid fa-file-excel"></i> <span>Ekspor Excel (CSV)</span>
-                        </button>
-                        <button id="btn-pdf-akuntansi" class="bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-2xs flex items-center space-x-1">
-                            <i class="fa-solid fa-file-pdf"></i> <span>Download PDF Laporan Akuntansi</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div class="bg-[#f5f5f7] border border-gray-200 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Modal Terinput</span>
-                        <span class="text-base font-extrabold text-[#0F172A] mt-2 block break-all" id="card-total-modal">Rp 0</span>
-                    </div>
-                    <div class="bg-[#f5f5f7] border border-gray-200 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Sisa Modal Berjalan</span>
-                        <span class="text-base font-extrabold text-blue-600 mt-2 block break-all" id="card-sisa-modal">Rp 0</span>
-                    </div>
-                    <div class="bg-[#f5f5f7] border border-gray-200 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Omset Penjualan</span>
-                        <span class="text-base font-extrabold text-emerald-600 mt-2 block break-all" id="card-total-omset">Rp 0</span>
-                    </div>
-                    <div class="bg-[#f5f5f7] border border-gray-200 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Piutang / Nominal DP</span>
-                        <span class="text-base font-extrabold text-amber-600 mt-2 block break-all" id="card-total-piutang">Rp 0</span>
-                    </div>
-                    <div class="bg-[#0F172A] text-white p-4 rounded-2xl shadow-md flex flex-col justify-between">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Laba Bersih Riil</span>
-                        <span class="text-base font-black text-emerald-400 mt-2 block break-all" id="card-laba-bersih">Rp 0</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                    <div class="bg-[#f5f5f7] border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs xl:col-span-1">
-                        <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider border-b border-gray-200 pb-2">Entri Aliran Kas Non-POS (Manual)</h3>
-                        <form id="form-akuntansi-manual" class="space-y-3" onsubmit="event.preventDefault();">
-                            <input type="hidden" id="akuntansi-edit-id">
+            <section id="mod-pos" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2 space-y-6">
+                        <h3 class="text-base font-bold text-[#0F172A] flex items-center gap-2">🛒 Antarmuka Keranjang POS Utama</h3>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#F8FAFC] p-4 rounded-xl border border-slate-100">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jenis Aliran Keuangan</label>
-                                <select id="akun-jenis-aliran" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#0F172A] font-semibold">
-                                    <option value="MODAL_AWAL">Modal Awal / Investasi (+)</option>
-                                    <option value="UANG_MASUK">Uang Masuk Lain-lain (+)</option>
-                                    <option value="PENGELUARAN_OPERASIONAL">Pengeluaran Operasional (-)</option>
-                                    <option value="PEMBELIAN_BAHAN">Pembelian Bahan & Aset (-)</option>
-                                </select>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Nama Pelanggan (Customer)</label>
+                                <input type="text" id="pos-nama-customer" required class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none" placeholder="Masukkan nama pembeli">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nominal Transaksi Kas (Rp)</label>
-                                <input type="number" id="akun-nominal" required min="1" placeholder="Masukkan jumlah Rp" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#0F172A] font-bold">
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Nomor WhatsApp HP</label>
+                                <input type="text" id="pos-hp-customer" required class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none" placeholder="62812xxxxxxxx">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Keterangan Memo Transaksi</label>
-                                <textarea id="akun-keterangan" required rows="3" placeholder="Contoh: Pembayaran listrik bulanan konveksi pusat" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#0F172A]"></textarea>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Tanggal Pesan/Order</label>
+                                <input type="date" id="pos-tgl-order" required class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none">
                             </div>
-                            <button type="submit" id="btn-simpan-akuntansi" class="w-full bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-lg shadow-sm uppercase tracking-wider">
-                                <i class="fa-solid fa-cash-register mr-1"></i> Simpan Catatan Finansial
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="xl:col-span-2 space-y-3">
-                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs space-y-3">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-2">
-                                <h3 class="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center">
-                                    <i class="fa-solid fa-book mr-2 text-gray-400"></i> Buku Besar Gabungan Real-Time & Kronologis
-                                </h3>
-                                <select id="akuntansi-filter-waktu" class="bg-[#f5f5f7] border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-[#1E293B]">
-                                    <option value="SEMUA">Semua Waktu Rentang</option>
-                                    <option value="HARI_INI">Per Hari Ini</option>
-                                    <option value="MINGGU_INI">Per Minggu Ini</option>
-                                    <option value="BULAN_INI">Per Bulan Ini</option>
-                                    <option value="TAHUN_INI">Per Tahun Berjalan</option>
-                                </select>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Estimasi Penyelesaian Produksi</label>
+                                <input type="date" id="pos-tgl-selesai" required class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none">
                             </div>
+                            <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Opsi Ekspedisi</label>
+                                    <input type="text" id="pos-ekspedisi" class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none" placeholder="JNE, J&T, Cargo...">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Nomor Resi Pengiriman</label>
+                                    <input type="text" id="pos-resi" class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none" placeholder="Resi jika ada">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Diskon Tambahan (Rp / %)</label>
+                                    <input type="text" id="pos-diskon" oninput="calculatePosCheckout()" class="w-full bg-white border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2 focus:outline-none" placeholder="Contoh: 10% atau 15000">
+                                </div>
+                            </div>
+                        </div>
 
-                            <div class="w-full overflow-x-auto block whitespace-nowrap border border-gray-200 rounded-xl">
-                                <table class="w-full text-left border-collapse text-sm">
-                                    <thead>
-                                        <tr class="bg-[#f5f5f7] border-b border-gray-200 text-gray-600 font-bold text-xs uppercase">
-                                            <th class="p-3">Tanggal & Jam</th>
-                                            <th class="p-3">Kategori Aliran</th>
-                                            <th class="p-3">Keterangan Memo / Log System</th>
-                                            <th class="p-3 text-right">Nominal Transaksi</th>
-                                            <th class="p-3 text-center">Aksi</th>
+                        <div>
+                            <h4 class="text-xs font-bold text-[#0F172A] mb-2 uppercase tracking-wider">🛒 Daftar Item Belanja Pelanggan</h4>
+                            <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                                <table class="w-full border-collapse text-left text-sm">
+                                    <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                        <tr>
+                                            <th class="p-3">Model/Warna/Size</th>
+                                            <th class="p-3 w-20 text-center">Qty</th>
+                                            <th class="p-3">Harga Satuan</th>
+                                            <th class="p-3">Sub-Total</th>
+                                            <th class="p-3 text-center">Hapus</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="table-body-akuntansi" class="divide-y divide-gray-100 text-[#1E293B] text-xs">
+                                    <tbody id="cart-table-body" class="divide-y divide-slate-50">
                                         </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-1 flex flex-col justify-between space-y-6">
+                        <div class="space-y-4 flex-1 flex flex-col">
+                            <h3 class="text-base font-bold text-[#0F172A]">🏷️ Pemilih Katalog Produk</h3>
+                            
+                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2" id="pos-catalog-container">
+                                </div>
+                        </div>
+
+                        <div class="border-t border-slate-100 pt-4 space-y-4 bg-[#F8FAFC] p-4 rounded-xl">
+                            <div class="flex justify-between items-center text-sm font-medium">
+                                <span>Gross Total:</span>
+                                <span id="pos-gross-display">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm font-medium">
+                                <span>Potongan Diskon:</span>
+                                <span id="pos-discount-display" class="text-red-500">- Rp 0</span>
+                            </div>
+                            <div class="flex justify-between items-center border-t border-slate-200 pt-2">
+                                <span class="text-sm font-bold text-[#0F172A]">Grand Total Tagihan:</span>
+                                <span id="pos-net-display" class="text-lg font-black text-[#3B82F6]">Rp 0</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Status Pembayaran</label>
+                                <select id="pos-status-bayar" class="w-full bg-white border border-slate-200 text-sm font-bold rounded-xl px-3 py-2 text-[#0F172A]">
+                                    <option value="LUNAS">LUNAS / SELESAI</option>
+                                    <option value="DP">DOWN PAYMENT (DP / PIUTANG)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <button onclick="checkoutTransaksi()" class="w-full bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-sm py-3 rounded-xl transition-all shadow-md">
+                                    💾 Simpan & Finalisasi Transaksi
+                                </button>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button id="btn-print-struk" disabled onclick="printStrukTerakhir()" class="bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-semibold text-xs py-2 rounded-xl transition-all border border-slate-200 disabled:opacity-50">
+                                        🖨️ Cetak Struk PDF
+                                    </button>
+                                    <button id="btn-wa-struk" disabled onclick="shareWhatsAppTerakhir()" class="bg-[#10B981] hover:bg-emerald-600 text-white font-semibold text-xs py-2 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1">
+                                        💬 Kirim WA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <h3 class="text-base font-bold text-[#0F172A] mb-3">🕒 Log Historis Antrean Pesanan POS</h3>
+                    <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                <tr>
+                                    <th class="p-4">Nota ID / Tanggal</th>
+                                    <th class="p-4">Customer</th>
+                                    <th class="p-4">Item Pesanan</th>
+                                    <th class="p-4">Grand Total</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-pos-body" class="divide-y divide-slate-50">
+                                </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
-        </main>
-    </div>
 
-    <div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 z-50 flex items-center justify-around px-2 text-gray-500">
-        <button onclick="switchModule('modul-stok')" class="flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold hover:text-[#0F172A] transition-colors nav-mobile-btn" data-mod="modul-stok">
-            <i class="fa-solid fa-boxes-stacked text-base mb-0.5"></i>
-            <span class="text-[9px]">Stok</span>
-        </button>
-        <button onclick="switchModule('modul-hpp')" class="flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold hover:text-[#0F172A] transition-colors nav-mobile-btn" data-mod="modul-hpp">
-            <i class="fa-solid fa-tags text-base mb-0.5"></i>
-            <span class="text-[9px]">HPP</span>
-        </button>
-        <button onclick="switchModule('modul-pos')" class="flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold hover:text-[#0F172A] transition-colors nav-mobile-btn" data-mod="modul-pos">
-            <i class="fa-solid fa-cash-register text-base mb-0.5"></i>
-            <span class="text-[9px]">POS</span>
-        </button>
-        <button onclick="switchModule('modul-customer')" class="flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold hover:text-[#0F172A] transition-colors nav-mobile-btn" data-mod="modul-customer">
-            <i class="fa-solid fa-users text-base mb-0.5"></i>
-            <span class="text-[9px]">CRM</span>
-        </button>
-        <button onclick="switchModule('modul-akuntansi')" class="flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold hover:text-[#0F172A] transition-colors nav-mobile-btn" data-mod="modul-akuntansi">
-            <i class="fa-solid fa-receipt text-base mb-0.5"></i>
-            <span class="text-[9px]">Akuntansi</span>
-        </button>
-    </div>
+            <section id="mod-crm" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h3 class="text-base font-bold text-[#0F172A]">👥 Log Data Hubungan Pelanggan (CRM Log)</h3>
+                        <button onclick="downloadPDFCustomerAll()" class="bg-[#10B981] hover:bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm">
+                            📥 Download PDF Database Customer
+                        </button>
+                    </div>
+                    <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                <tr>
+                                    <th class="p-4">Tanggal Terdaftar</th>
+                                    <th class="p-4">Nama Pelanggan</th>
+                                    <th class="p-4">Nomor HP</th>
+                                    <th class="p-4">Akumulasi Transaksi Belanja</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-crm-body" class="divide-y divide-slate-50">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="mod-retur" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                        <h3 class="text-base font-bold text-[#0F172A]">🔄 Pengelolaan Barang Retur & Reject (Cacat)</h3>
+                        <form id="form-retur" onsubmit="saveRetur(event)" class="space-y-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-100">
+                            <input type="hidden" id="retur-id">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Pilih Model Pakaian</label>
+                                    <select id="retur-model" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]">
+                                        </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Jenis Kasus</label>
+                                    <select id="retur-jenis" class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]">
+                                        <option value="REJECT_PRODUKSI">CACAT PRODUKSI / REJECT (RUGI)</option>
+                                        <option value="TUKAR_SIZE">TUKAR SIZE CUSTOMER (NETRAL)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Jumlah Qty Item</label>
+                                    <input type="number" id="retur-qty" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" value="1">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Estimasi Kerugian (Rp)</label>
+                                    <input type="number" id="retur-kerugian" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" value="0">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Memo Deskripsi Kasus</label>
+                                <input type="text" id="retur-keterangan" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" placeholder="Keterangan jahitan robek, tukar warna, dll">
+                            </div>
+                            <button type="submit" class="w-full bg-[#0F172A] text-white font-bold text-xs py-2.5 rounded-xl">Simpan Log Retur</button>
+                        </form>
+                        <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                            <table class="w-full border-collapse text-left text-sm">
+                                <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                    <tr>
+                                        <th class="p-3">Model</th>
+                                        <th class="p-3">Jenis</th>
+                                        <th class="p-3">Qty</th>
+                                        <th class="p-3">Rugi</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-retur-body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                        <h3 class="text-base font-bold text-[#0F172A]">⚙️ Manajemen Inventaris Alat & Beban Penyusutan</h3>
+                        <form id="form-inventaris" onsubmit="saveInventaris(event)" class="space-y-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-100">
+                            <input type="hidden" id="inv-id">
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Nama Alat / Aset Kerja Kerja</label>
+                                <input type="text" id="inv-nama" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" placeholder="Mesin Jahit Jack F4, Laptop Desain...">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Harga Beli Awal (Rp)</label>
+                                    <input type="number" id="inv-harga" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" value="0">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-[#334155] mb-1">Penyusutan Bulanan (Rp)</label>
+                                    <input type="number" id="inv-susut" required class="w-full bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 text-[#0F172A]" value="0">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-[#0F172A] text-white font-bold text-xs py-2.5 rounded-xl">Simpan Aset Kerja</button>
+                        </form>
+                        <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl">
+                            <table class="w-full border-collapse text-left text-sm">
+                                <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold">
+                                    <tr>
+                                        <th class="p-3">Nama Alat</th>
+                                        <th class="p-3">Harga Perolehan</th>
+                                        <th class="p-3">Susut / Bulan</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-inventaris-body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="mod-akuntansi" class="hidden space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Modal</span>
+                        <div id="fin-modal" class="text-base font-extrabold text-[#0F172A] mt-1">Rp 0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sisa Modal Berjalan</span>
+                        <div id="fin-sisa-modal" class="text-base font-extrabold text-[#0F172A] mt-1">Rp 0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omset Penjualan POS</span>
+                        <div id="fin-omset" class="text-base font-extrabold text-[#0F172A] mt-1">Rp 0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Piutang / DP</span>
+                        <div id="fin-piutang" class="text-base font-extrabold text-amber-600 mt-1">Rp 0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm bg-emerald-50/30 border-emerald-100">
+                        <span class="block text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Laba Bersih Riil</span>
+                        <div id="fin-laba" class="text-lg font-black text-[#10B981] mt-1">Rp 0</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-1">
+                        <h3 class="text-base font-bold text-[#0F172A] mb-4">✍️ Entri Jurnal Transaksi Manual</h3>
+                        <form id="form-akuntansi" onsubmit="saveJurnalManual(event)" class="space-y-4">
+                            <input type="hidden" id="jurnal-id">
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Jenis Aliran Keuangan</label>
+                                <select id="jurnal-jenis" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2.5">
+                                    <option value="MODAL_AWAL">Modal Awal / Investasi (+)</option>
+                                    <option value="MASUK_LAIN">Uang Masuk Lain-lain (+)</option>
+                                    <option value="KELUAR_OPERASIONAL">Pengeluar Operasional (-)</option>
+                                    <option value="BELI_BAHAN">Pembelian Bahan & Aset (-)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Nominal Transaksi Tunai (Rp)</label>
+                                <input type="number" id="jurnal-nominal" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2.5 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-[#334155] mb-1">Keterangan Memo Catatan</label>
+                                <textarea id="jurnal-memo" rows="2" required class="w-full bg-[#F8FAFC] border border-slate-200 text-[#0F172A] text-sm rounded-xl px-3 py-2.5 focus:outline-none" placeholder="Isi detail deskripsi aliran kas..."></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-sm py-2.5 rounded-xl transition-all shadow-sm">
+                                Simpan Catatan Finansial
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2 flex flex-col">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                            <h3 class="text-base font-bold text-[#0F172A]">📖 Buku Besar Kronologis Aliran Kas</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="downloadPDFAkuntansi()" class="bg-[#10B981] hover:bg-emerald-600 text-white font-semibold text-[11px] px-3 py-2 rounded-xl transition-all shadow-sm">PDF</button>
+                                <button onclick="exportExcelAkuntansi()" class="bg-[#3B82F6] hover:bg-blue-600 text-white font-semibold text-[11px] px-3 py-2 rounded-xl transition-all shadow-sm">Ekspor Excel (CSV)</button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 gap-2 mb-4 bg-[#F8FAFC] p-2 rounded-xl border border-slate-100 text-center">
+                            <button onclick="changeSubFilterRange('HARI')" id="subfilter-HARI" class="subfilter-btn py-1 px-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-white transition-all">Per Hari</button>
+                            <button onclick="changeSubFilterRange('MINGGU')" id="subfilter-MINGGU" class="subfilter-btn py-1 px-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-white transition-all">Per Minggu</button>
+                            <button onclick="changeSubFilterRange('BULAN')" id="subfilter-BULAN" class="subfilter-btn py-1 px-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-white transition-all">Per Bulan</button>
+                            <button onclick="changeSubFilterRange('TAHUN')" id="subfilter-TAHUN" class="subfilter-btn py-1 px-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-white transition-all">Per Tahun</button>
+                        </div>
+
+                        <div class="w-full overflow-x-auto block whitespace-nowrap border border-slate-100 rounded-xl flex-1 max-h-[350px]">
+                            <table class="w-full border-collapse text-left text-sm">
+                                <thead class="bg-[#F8FAFC] border-b border-slate-100 text-[#0F172A] font-semibold tracking-wide">
+                                    <tr>
+                                        <th class="p-3">Waktu Log</th>
+                                        <th class="p-3">Jenis Aliran</th>
+                                        <th class="p-3">Keterangan Deskripsi</th>
+                                        <th class="p-3">Nominal</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-akuntansi-body" class="divide-y divide-slate-50">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="mod-backup" class="hidden max-w-xl mx-auto">
+                <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6 text-center">
+                    <div class="w-16 h-16 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full flex items-center justify-center text-2xl mx-auto">💾</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-[#0F172A]">Panel Sinkronisasi Jembatan & Backup Data Lokal</h3>
+                        <p class="text-sm text-slate-500 mt-1">Seluruh repositori data dienkapsulasi secara lokal di dalam enkripsi terisolasi sandbox IndexedDB peramban Anda aman hingga jangka panjang 2030+.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                        <button onclick="backupSystemJSON()" class="bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition-all">
+                            📥 Unduh Ekspor Backup (.JSON)
+                        </button>
+                        <label class="bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-bold text-sm py-3 rounded-xl border border-slate-200 cursor-pointer block transition-all">
+                            📤 Unggah / Restore File Backup
+                            <input type="file" id="import-json-file" accept=".json" onchange="restoreSystemJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
 
     <script src="script.js"></script>
 </body>
